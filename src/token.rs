@@ -1,11 +1,12 @@
 use crate::tokentype::TokenType;
+use crate::literal::Literal;
 use std::fmt;
 
 #[derive(Clone)]
 pub struct Token {
     pub(crate) token_type: TokenType,
     pub(crate) lexeme: String,
-    pub(crate) literal: Option<bool>, //Option<bool> maybe can type the the tokens :P for now java object before so have to see......
+    pub(crate) literal: Literal,
     pub(crate) line: u64,
 }
 

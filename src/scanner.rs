@@ -1,6 +1,8 @@
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use crate::lox::Lox;
+use crate::literal::Literal;
+use phf::{phf_map};
 
 pub struct Scanner<'a> {
     source: String,
@@ -11,6 +13,25 @@ pub struct Scanner<'a> {
     line: usize,
 
 }
+
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+    "and" => TokenType::And,
+    "class" => TokenType::Class,
+    "else" => TokenType::Else,
+    "false" => TokenType::False,
+    "for" => TokenType::For,
+    "fun" => TokenType::Fun,
+    "if" => TokenType::If,
+    "nil" => TokenType::Nil,
+    "or" => TokenType::Or,
+    "print" => TokenType::Print,
+    "return" => TokenType::Return,
+    "super" => TokenType::Super,
+    "this" => TokenType::This,
+    "true" => TokenType::True,
+    "var" => TokenType::Var,
+    "while" => TokenType::While,
+    };
 
 impl<'a> Scanner<'a> {
     pub fn new(source: String, lox: &'a mut Lox) -> Self {
@@ -33,7 +54,7 @@ impl<'a> Scanner<'a> {
         self.tokens.push(Token {
             token_type: TokenType::EOF,
             lexeme: "".to_string(),
-            literal: None,
+            literal: Literal::None,
             line: self.line as u64,
         });
         self.tokens.to_vec()
@@ -83,12 +104,65 @@ impl<'a> Scanner<'a> {
             ' ' | '\r' | '\t' => (),
             '\n' => self.line = self.line + 1,
             '"' => self.string(),
-            _ => self.lox.error(self.line as u64, String::from("Unexpected character."))
+            ch => {
+                if is_digit(ch) {
+                    self.number();
+                } else if is_alpha(ch) {
+                    self.identifier();
+                } else {
+                    self.lox.error(self.line as u64, String::from("Unexpected character."))
+                }
+            }
         }
     }
 
-    fn string(&mut self) {
+    fn identifier(&mut self) {
+        while is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
 
+        let text = &self.source[self.start..self.current];
+        match KEYWORDS.get(text) {
+            None => self.add_token(TokenType::Identifier),
+            Some(ttype) => self.add_token(ttype.clone())
+        }
+    }
+
+    fn number(&mut self) {
+        while is_digit(self.peek()) {
+            self.advance();
+        }
+
+        if self.peek() == '.' && is_digit(self.peek_next()) {
+            self.advance();
+            while is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+        let number_string = &self.source[self.start..self.current];
+        let number: f64 = number_string.parse().unwrap();
+        self.add_token_total(TokenType::Number, Literal::Number(number));
+    }
+
+    fn string(&mut self) {
+        let mut peeked = self.peek();
+        while peeked != '"' && !self.is_at_end() {
+            if peeked == '\n' {
+                self.line = self.line + 1;
+            }
+            self.advance();
+            peeked = self.peek();
+        }
+
+        if self.is_at_end() {
+            self.lox.error(self.line as u64, String::from("Unterminated string."));
+            return ();
+        }
+
+        self.advance();
+
+        let value = &self.source[self.start + 1..self.current - 1];
+        self.add_token_total(TokenType::String, Literal::String(String::from(value)));
     }
 
     fn match_char(&mut self, expected: char) -> bool {
@@ -109,6 +183,13 @@ impl<'a> Scanner<'a> {
         self.source.chars().nth(self.current).unwrap()
     }
 
+    fn peek_next(&self) -> char {
+        if self.current + 1 > self.source.len() {
+            return '\0';
+        }
+        self.source.chars().nth(self.current + 1).unwrap()
+    }
+
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -120,10 +201,10 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_total(token_type, None);
+        self.add_token_total(token_type, Literal::None);
     }
 
-    fn add_token_total(&mut self, token_type: TokenType, literal: Option<bool>) {
+    fn add_token_total(&mut self, token_type: TokenType, literal: Literal) {
         let text = &self.source[self.start..self.current];
         self.tokens.push(
             Token {
@@ -135,4 +216,18 @@ impl<'a> Scanner<'a> {
             }
         )
     }
+}
+
+fn is_alpha_numeric(c: char) -> bool {
+    is_alpha(c) || is_digit(c)
+}
+
+fn is_alpha(c: char) -> bool {
+    (c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') ||
+        c == '_'
+}
+
+fn is_digit(c: char) -> bool {
+    c >= '0' && c <= '9'
 }
