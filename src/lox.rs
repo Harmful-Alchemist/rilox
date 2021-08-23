@@ -20,10 +20,11 @@ impl Lox {
 
     pub fn run_prompt(&mut self) {
         let stdin = io::stdin();
-        let mut buffer = String::new();
+
         loop {
             print!("> ");
             io::stdout().flush().unwrap();
+            let mut buffer = String::new();
             let line = stdin.read_line(&mut buffer);
             match line {
                 Ok(0) => break,
@@ -39,7 +40,7 @@ impl Lox {
     fn run(&mut self, source: String) {
         let mut scanner = Scanner::new(source, self);
         let tokens: Vec<Token> = scanner.scan_tokens();
-        // for token in tokens {
+        // for token in tokens.clone() {
         //     println!("{:?}", token);
         // }
         let mut parser = Parser::new(tokens, self);

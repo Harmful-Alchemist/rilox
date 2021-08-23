@@ -103,13 +103,12 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> Result<Box<dyn Expr>, &'static str> {
-        let mut expr = self.factor()?;
         let types = &[TokenType::Minus, TokenType::Bang];
         let mut matching = self.matching(types);
         if matching {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Box::new(Unary { operator, right });
+            let expr = Box::new(Unary { operator, right });
             return Ok(expr);
         }
         self.primary()

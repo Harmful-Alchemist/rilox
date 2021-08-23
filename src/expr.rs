@@ -39,7 +39,7 @@ pub struct LiteralExpr {
 impl Expr for LiteralExpr {
     fn pretty_print(&self) -> String {
         match &self.value {
-            Literal::String(a) => a.clone(),
+            Literal::String(a) => format!("\"{}\"", a.clone()),
             Literal::Number(a) => format!("{}", a),
             Literal::Bool(a) => format!("{}", a),
             Literal::None => String::from("nil"),
