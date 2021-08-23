@@ -2,6 +2,8 @@ use std::{fs, io};
 use crate::token::Token;
 use crate::scanner::Scanner;
 use std::io::Write;
+use crate::tokentype::TokenType;
+use crate::parser::Parser;
 
 pub struct Lox {
     pub had_error: bool,
@@ -37,8 +39,13 @@ impl Lox {
     fn run(&mut self, source: String) {
         let mut scanner = Scanner::new(source, self);
         let tokens: Vec<Token> = scanner.scan_tokens();
-        for token in tokens {
-            println!("{:?}", token);
+        // for token in tokens {
+        //     println!("{:?}", token);
+        // }
+        let mut parser = Parser::new(tokens, self);
+        match parser.parse() {
+            Some(expr) => println!("{}", expr.pretty_print()),
+            _ => {}
         }
     }
 
@@ -49,5 +56,12 @@ impl Lox {
     fn report(&mut self, line: u64, where_error: String, message: String) {
         eprintln!("[line {}] Error{}: {}", line, where_error, message);
         self.had_error = true;
+    }
+
+    pub fn error_parse(&mut self, token: &Token, msg: &str){
+        match token.token_type {
+            TokenType::EOF => self.report(token.line, String::from("at end"), String::from(msg)),
+            _ => self.report(token.line, format!("at '{}'", token.lexeme), String::from(msg))
+        }
     }
 }

@@ -5,23 +5,23 @@ pub trait Expr {
     fn pretty_print(&self) -> String;
 }
 
-pub struct Binary<'a> {
-    pub(crate) left: &'a dyn Expr,
+pub struct Binary {
+    pub(crate) left: Box<dyn Expr>,
     pub(crate) operator: Token,
-    pub(crate) right: &'a dyn Expr,
+    pub(crate) right: Box<dyn Expr>,
 }
 
-impl Expr for Binary<'_> {
+impl Expr for Binary {
     fn pretty_print(&self) -> String {
         format!("({} {} {})", self.operator.lexeme, self.left.pretty_print(), self.right.pretty_print())
     }
 }
 
-pub struct Grouping<'a> {
-    pub(crate) expression: &'a dyn Expr,
+pub struct Grouping {
+    pub(crate) expression: Box<dyn Expr>,
 }
 
-impl Expr for Grouping<'_> {
+impl Expr for Grouping {
     fn pretty_print(&self) -> String {
         format!("(group {})", self.expression.pretty_print())
     }
@@ -36,17 +36,18 @@ impl Expr for LiteralExpr {
         match &self.value {
             Literal::String(a) => a.clone(),
             Literal::Number(a) => format!("{}", a),
+            Literal::Bool(a) => format!("{}", a),
             Literal::None => String::from("nil")
         }
     }
 }
 
-pub struct Unary<'a> {
+pub struct Unary {
     pub(crate) operator: Token,
-    pub(crate) right: &'a dyn Expr,
+    pub(crate) right: Box<dyn Expr>,
 }
 
-impl Expr for Unary<'_> {
+impl Expr for Unary {
     fn pretty_print(&self) -> String {
         format!("({} {})", self.operator.lexeme, self.right.pretty_print())
     }

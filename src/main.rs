@@ -4,6 +4,7 @@ mod tokentype;
 mod scanner;
 mod literal;
 mod expr;
+mod parser;
 
 use crate::lox::Lox;
 use std::env;
