@@ -1,8 +1,8 @@
+use crate::literal::Literal;
+use crate::lox::Lox;
 use crate::token::Token;
 use crate::tokentype::TokenType;
-use crate::lox::Lox;
-use crate::literal::Literal;
-use phf::{phf_map};
+use phf::phf_map;
 
 pub struct Scanner<'a> {
     source: String,
@@ -11,27 +11,26 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
-
 }
 
 static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
-    "and" => TokenType::And,
-    "class" => TokenType::Class,
-    "else" => TokenType::Else,
-    "false" => TokenType::False,
-    "for" => TokenType::For,
-    "fun" => TokenType::Fun,
-    "if" => TokenType::If,
-    "nil" => TokenType::Nil,
-    "or" => TokenType::Or,
-    "print" => TokenType::Print,
-    "return" => TokenType::Return,
-    "super" => TokenType::Super,
-    "this" => TokenType::This,
-    "true" => TokenType::True,
-    "var" => TokenType::Var,
-    "while" => TokenType::While,
-    };
+"and" => TokenType::And,
+"class" => TokenType::Class,
+"else" => TokenType::Else,
+"false" => TokenType::False,
+"for" => TokenType::For,
+"fun" => TokenType::Fun,
+"if" => TokenType::If,
+"nil" => TokenType::Nil,
+"or" => TokenType::Or,
+"print" => TokenType::Print,
+"return" => TokenType::Return,
+"super" => TokenType::Super,
+"this" => TokenType::This,
+"true" => TokenType::True,
+"var" => TokenType::Var,
+"while" => TokenType::While,
+};
 
 impl<'a> Scanner<'a> {
     pub fn new(source: String, lox: &'a mut Lox) -> Self {
@@ -75,19 +74,35 @@ impl<'a> Scanner<'a> {
             '*' => self.add_token(TokenType::Star),
             '!' => {
                 let doubled = self.match_char('=');
-                self.add_token(if doubled { TokenType::BangEqual } else { TokenType::Bang });
+                self.add_token(if doubled {
+                    TokenType::BangEqual
+                } else {
+                    TokenType::Bang
+                });
             }
             '=' => {
                 let doubled = self.match_char('=');
-                self.add_token(if doubled { TokenType::EqualEqual } else { TokenType::Equal })
+                self.add_token(if doubled {
+                    TokenType::EqualEqual
+                } else {
+                    TokenType::Equal
+                })
             }
             '<' => {
                 let doubled = self.match_char('=');
-                self.add_token(if doubled { TokenType::LessEqual } else { TokenType::Less })
+                self.add_token(if doubled {
+                    TokenType::LessEqual
+                } else {
+                    TokenType::Less
+                })
             }
             '>' => {
                 let doubled = self.match_char('=');
-                self.add_token(if doubled { TokenType::GreaterEqual } else { TokenType::Greater })
+                self.add_token(if doubled {
+                    TokenType::GreaterEqual
+                } else {
+                    TokenType::Greater
+                })
             }
             '/' => {
                 let doubled = self.match_char('/');
@@ -110,7 +125,8 @@ impl<'a> Scanner<'a> {
                 } else if is_alpha(ch) {
                     self.identifier();
                 } else {
-                    self.lox.error(self.line as u64, String::from("Unexpected character."))
+                    self.lox
+                        .error(self.line as u64, String::from("Unexpected character."))
                 }
             }
         }
@@ -124,7 +140,7 @@ impl<'a> Scanner<'a> {
         let text = &self.source[self.start..self.current];
         match KEYWORDS.get(text) {
             None => self.add_token(TokenType::Identifier),
-            Some(ttype) => self.add_token(ttype.clone())
+            Some(ttype) => self.add_token(ttype.clone()),
         }
     }
 
@@ -155,13 +171,14 @@ impl<'a> Scanner<'a> {
         }
 
         if self.is_at_end() {
-            self.lox.error(self.line as u64, String::from("Unterminated string."));
+            self.lox
+                .error(self.line as u64, String::from("Unterminated string."));
             return ();
         }
 
         self.advance();
 
-        let  value: String = String::from( &self.source[self.start + 1..self.current - 1]);
+        let value: String = String::from(&self.source[self.start + 1..self.current - 1]);
         self.add_token_total(TokenType::String, Literal::String(value));
     }
 
@@ -206,15 +223,12 @@ impl<'a> Scanner<'a> {
 
     fn add_token_total(&mut self, token_type: TokenType, literal: Literal) {
         let text = &self.source[self.start..self.current];
-        self.tokens.push(
-            Token {
-                token_type,
-                lexeme: String::from(text),
-                literal,
-                line: self.line as u64,
-
-            }
-        )
+        self.tokens.push(Token {
+            token_type,
+            lexeme: String::from(text),
+            literal,
+            line: self.line as u64,
+        })
     }
 }
 
@@ -223,9 +237,7 @@ fn is_alpha_numeric(c: char) -> bool {
 }
 
 fn is_alpha(c: char) -> bool {
-    (c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z') ||
-        c == '_'
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
 }
 
 fn is_digit(c: char) -> bool {

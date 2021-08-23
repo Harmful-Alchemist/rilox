@@ -1,18 +1,18 @@
+mod expr;
+mod literal;
 mod lox;
+mod parser;
+mod scanner;
 mod token;
 mod tokentype;
-mod scanner;
-mod literal;
-mod expr;
-mod parser;
 
-use crate::lox::Lox;
-use std::env;
-use crate::expr::{Binary, Unary, Grouping, LiteralExpr};
 use crate::expr::Expr;
+use crate::expr::{Binary, Grouping, LiteralExpr, Unary};
+use crate::literal::Literal;
+use crate::lox::Lox;
 use crate::token::Token;
 use crate::tokentype::TokenType;
-use crate::literal::Literal;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -52,4 +52,3 @@ fn main() {
         lox.run_prompt();
     }
 }
-

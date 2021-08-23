@@ -1,8 +1,8 @@
+use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
+use crate::literal::Literal;
 use crate::lox::Lox;
 use crate::token::Token;
-use crate::expr::{Expr, Binary, Unary, LiteralExpr, Grouping};
 use crate::tokentype::TokenType;
-use crate::literal::Literal;
 
 pub struct Parser<'a> {
     lox: &'a mut Lox,
@@ -19,10 +19,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn parse(&mut self) -> Option<Box<dyn Expr>>{
+    pub(crate) fn parse(&mut self) -> Option<Box<dyn Expr>> {
         match self.expression() {
             Ok(expr) => Some(expr),
-            Err(_) => None
+            Err(_) => None,
         }
     }
 
@@ -48,7 +48,12 @@ impl<'a> Parser<'a> {
 
     fn comparison(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         let mut expr = self.term()?;
-        let types = &[TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual];
+        let types = &[
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+        ];
         let mut matching = self.matching(types);
         while matching {
             let operator = self.previous().clone();
@@ -104,10 +109,7 @@ impl<'a> Parser<'a> {
         if matching {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Box::new(Unary {
-                operator,
-                right,
-            });
+            expr = Box::new(Unary { operator, right });
             return Ok(expr);
         }
         self.primary()
@@ -116,34 +118,32 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         if self.matching(&[TokenType::False]) {
             return Ok(Box::new(LiteralExpr {
-                value: Literal::Bool(false)
+                value: Literal::Bool(false),
             }));
         }
 
         if self.matching(&[TokenType::True]) {
             return Ok(Box::new(LiteralExpr {
-                value: Literal::Bool(true)
+                value: Literal::Bool(true),
             }));
         }
 
         if self.matching((&[TokenType::Nil])) {
             return Ok(Box::new(LiteralExpr {
-                value: Literal::None
+                value: Literal::None,
             }));
         }
 
         if self.matching(&[TokenType::String, TokenType::Number]) {
             return Ok(Box::new(LiteralExpr {
-                value: self.previous().literal.clone()
+                value: self.previous().literal.clone(),
             }));
         }
 
         if self.matching(&[TokenType::LeftParen]) {
             let expression = self.expression()?;
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
-            return Ok(Box::new(Grouping {
-                expression
-            }));
+            return Ok(Box::new(Grouping { expression }));
         }
 
         self.error(&self.peek().clone(), "Expect expression.")
@@ -159,11 +159,15 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn consume(&mut self, ttype: TokenType, msg: &'static str) -> Result<Box<dyn Expr>, &'static str> {
+    fn consume(
+        &mut self,
+        ttype: TokenType,
+        msg: &'static str,
+    ) -> Result<Box<dyn Expr>, &'static str> {
         if self.check(ttype) {
             self.advance();
-            Ok(Box::new(LiteralExpr{
-                value: Literal::None
+            Ok(Box::new(LiteralExpr {
+                value: Literal::None,
             }))
         } else {
             self.error(&self.peek().clone(), msg)
@@ -204,7 +208,14 @@ impl<'a> Parser<'a> {
             }
 
             match self.peek().token_type {
-                TokenType::Class | TokenType::For | TokenType::Fun | TokenType::If | TokenType::Print | TokenType::Return | TokenType::Var | TokenType::While => return,
+                TokenType::Class
+                | TokenType::For
+                | TokenType::Fun
+                | TokenType::If
+                | TokenType::Print
+                | TokenType::Return
+                | TokenType::Var
+                | TokenType::While => return,
                 _ => {}
             }
 

@@ -1,5 +1,5 @@
-use crate::token::Token;
 use crate::literal::Literal;
+use crate::token::Token;
 
 pub trait Expr {
     fn pretty_print(&self) -> String;
@@ -13,7 +13,12 @@ pub struct Binary {
 
 impl Expr for Binary {
     fn pretty_print(&self) -> String {
-        format!("({} {} {})", self.operator.lexeme, self.left.pretty_print(), self.right.pretty_print())
+        format!(
+            "({} {} {})",
+            self.operator.lexeme,
+            self.left.pretty_print(),
+            self.right.pretty_print()
+        )
     }
 }
 
@@ -37,7 +42,7 @@ impl Expr for LiteralExpr {
             Literal::String(a) => a.clone(),
             Literal::Number(a) => format!("{}", a),
             Literal::Bool(a) => format!("{}", a),
-            Literal::None => String::from("nil")
+            Literal::None => String::from("nil"),
         }
     }
 }

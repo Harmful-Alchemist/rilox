@@ -1,9 +1,9 @@
-use std::{fs, io};
-use crate::token::Token;
-use crate::scanner::Scanner;
-use std::io::Write;
-use crate::tokentype::TokenType;
 use crate::parser::Parser;
+use crate::scanner::Scanner;
+use crate::token::Token;
+use crate::tokentype::TokenType;
+use std::io::Write;
+use std::{fs, io};
 
 pub struct Lox {
     pub had_error: bool,
@@ -31,7 +31,7 @@ impl Lox {
                     self.run(buffer.clone());
                     self.had_error = false
                 }
-                _ => break
+                _ => break,
             }
         }
     }
@@ -58,10 +58,14 @@ impl Lox {
         self.had_error = true;
     }
 
-    pub fn error_parse(&mut self, token: &Token, msg: &str){
+    pub fn error_parse(&mut self, token: &Token, msg: &str) {
         match token.token_type {
             TokenType::EOF => self.report(token.line, String::from("at end"), String::from(msg)),
-            _ => self.report(token.line, format!("at '{}'", token.lexeme), String::from(msg))
+            _ => self.report(
+                token.line,
+                format!("at '{}'", token.lexeme),
+                String::from(msg),
+            ),
         }
     }
 }
