@@ -161,8 +161,8 @@ impl<'a> Scanner<'a> {
 
         self.advance();
 
-        let value = &self.source[self.start + 1..self.current - 1];
-        self.add_token_total(TokenType::String, Literal::String(String::from(value)));
+        let  value: String = String::from( &self.source[self.start + 1..self.current - 1]);
+        self.add_token_total(TokenType::String, Literal::String(value));
     }
 
     fn match_char(&mut self, expected: char) -> bool {

@@ -21,7 +21,7 @@ impl Lox {
         let mut buffer = String::new();
         loop {
             print!("> ");
-            io::stdout().flush();
+            io::stdout().flush().unwrap();
             let line = stdin.read_line(&mut buffer);
             match line {
                 Ok(0) => break,
