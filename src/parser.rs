@@ -1,6 +1,6 @@
-use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
-use crate::literal::Literal;
+use crate::expr::{Binary, Expr, Grouping, Literal, Unary};
 use crate::lox::Lox;
+use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -116,25 +116,25 @@ impl<'a> Parser<'a> {
 
     fn primary(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         if self.matching(&[TokenType::False]) {
-            return Ok(Box::new(LiteralExpr {
-                value: Literal::Bool(false),
+            return Ok(Box::new(Literal {
+                value: LoxValue::Bool(false),
             }));
         }
 
         if self.matching(&[TokenType::True]) {
-            return Ok(Box::new(LiteralExpr {
-                value: Literal::Bool(true),
+            return Ok(Box::new(Literal {
+                value: LoxValue::Bool(true),
             }));
         }
 
         if self.matching((&[TokenType::Nil])) {
-            return Ok(Box::new(LiteralExpr {
-                value: Literal::None,
+            return Ok(Box::new(Literal {
+                value: LoxValue::None,
             }));
         }
 
         if self.matching(&[TokenType::String, TokenType::Number]) {
-            return Ok(Box::new(LiteralExpr {
+            return Ok(Box::new(Literal {
                 value: self.previous().literal.clone(),
             }));
         }
@@ -165,8 +165,8 @@ impl<'a> Parser<'a> {
     ) -> Result<Box<dyn Expr>, &'static str> {
         if self.check(ttype) {
             self.advance();
-            Ok(Box::new(LiteralExpr {
-                value: Literal::None,
+            Ok(Box::new(Literal {
+                value: LoxValue::None,
             }))
         } else {
             self.error(&self.peek().clone(), msg)

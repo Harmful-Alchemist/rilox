@@ -1,22 +1,23 @@
 mod expr;
-mod literal;
+mod interpreter;
 mod lox;
+mod loxvalue;
 mod parser;
 mod scanner;
 mod token;
 mod tokentype;
 
 use crate::expr::Expr;
-use crate::expr::{Binary, Grouping, LiteralExpr, Unary};
-use crate::literal::Literal;
+use crate::expr::{Binary, Grouping, Literal, Unary};
 use crate::lox::Lox;
+use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut lox: Lox = Lox { had_error: false };
+    let mut lox: Lox = Lox::new();
 
     // pretty print testing
     // let expression = Binary {

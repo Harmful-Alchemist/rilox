@@ -1,5 +1,5 @@
-use crate::literal::Literal;
 use crate::lox::Lox;
+use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use phf::phf_map;
@@ -53,7 +53,7 @@ impl<'a> Scanner<'a> {
         self.tokens.push(Token {
             token_type: TokenType::EOF,
             lexeme: "".to_string(),
-            literal: Literal::None,
+            literal: LoxValue::None,
             line: self.line as u64,
         });
         self.tokens.to_vec()
@@ -157,7 +157,7 @@ impl<'a> Scanner<'a> {
         }
         let number_string = &self.source[self.start..self.current];
         let number: f64 = number_string.parse().unwrap();
-        self.add_token_total(TokenType::Number, Literal::Number(number));
+        self.add_token_total(TokenType::Number, LoxValue::Number(number));
     }
 
     fn string(&mut self) {
@@ -179,7 +179,7 @@ impl<'a> Scanner<'a> {
         self.advance();
 
         let value: String = String::from(&self.source[self.start + 1..self.current - 1]);
-        self.add_token_total(TokenType::String, Literal::String(value));
+        self.add_token_total(TokenType::String, LoxValue::String(value));
     }
 
     fn match_char(&mut self, expected: char) -> bool {
@@ -218,10 +218,10 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_total(token_type, Literal::None);
+        self.add_token_total(token_type, LoxValue::None);
     }
 
-    fn add_token_total(&mut self, token_type: TokenType, literal: Literal) {
+    fn add_token_total(&mut self, token_type: TokenType, literal: LoxValue) {
         let text = &self.source[self.start..self.current];
         self.tokens.push(Token {
             token_type,

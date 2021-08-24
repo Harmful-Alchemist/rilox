@@ -1,4 +1,4 @@
-use crate::literal::Literal;
+use crate::loxvalue::LoxValue;
 use crate::tokentype::TokenType;
 use std::fmt;
 
@@ -6,7 +6,7 @@ use std::fmt;
 pub struct Token {
     pub(crate) token_type: TokenType,
     pub(crate) lexeme: String,
-    pub(crate) literal: Literal,
+    pub(crate) literal: LoxValue,
     pub(crate) line: u64,
 }
 

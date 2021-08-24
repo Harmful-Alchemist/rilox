@@ -1,3 +1,5 @@
+use crate::expr::Expr;
+use crate::interpreter::Interpreter;
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::token::Token;
@@ -6,15 +8,29 @@ use std::io::Write;
 use std::{fs, io};
 
 pub struct Lox {
-    pub had_error: bool,
+    had_error: bool,
+    had_runtime_error: bool,
+    interpreter: Interpreter,
 }
 
 impl Lox {
+    pub fn new() -> Self {
+        Lox {
+            had_error: false,
+            had_runtime_error: false,
+            interpreter: Interpreter::new(),
+        }
+    }
+
     pub fn run_file(&mut self, path: &String) {
         // let bytes = fs::read(path)?;
         self.run(fs::read_to_string(path).unwrap());
         if self.had_error {
             std::process::exit(65);
+        }
+
+        if self.had_runtime_error {
+            std::process::exit(70);
         }
     }
 
@@ -44,8 +60,16 @@ impl Lox {
         //     println!("{:?}", token);
         // }
         let mut parser = Parser::new(tokens, self);
+
         match parser.parse() {
-            Some(expr) => println!("{}", expr.pretty_print()),
+            Some(expr) => {
+                // println!(" expression {}", expr.pretty_print());
+                let interpreted = self.interpreter.interpret(&*expr);
+                match interpreted {
+                    Ok(_) => {}
+                    Err(e) => self.runtime_error(e),
+                };
+            }
             _ => {}
         }
     }
@@ -68,5 +92,11 @@ impl Lox {
                 String::from(msg),
             ),
         }
+    }
+
+    pub fn runtime_error(&mut self, error: (String, Token)) {
+        let (msg, token) = error;
+        eprintln!("{}\n[line {}]", msg, token.line);
+        self.had_runtime_error = true;
     }
 }
