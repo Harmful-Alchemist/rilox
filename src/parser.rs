@@ -1,6 +1,7 @@
 use crate::expr::{Binary, Expr, Grouping, Literal, Unary};
 use crate::lox::Lox;
 use crate::loxvalue::LoxValue;
+use crate::stmt::{Expression, Print, Stmt};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -19,15 +20,45 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn parse(&mut self) -> Option<Box<dyn Expr>> {
-        match self.expression() {
-            Ok(expr) => Some(expr),
-            Err(_) => None,
+    pub(crate) fn parse(&mut self) -> Vec<Box<dyn Stmt>> {
+        let mut statements: Vec<Box<dyn Stmt>> = Vec::new();
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(statement) => statements.push(statement),
+                Err(_) => {}
+            }
         }
+        statements
     }
 
     fn expression(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         self.equality()
+    }
+
+    fn statement(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
+        if self.matching(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
+        let expression = self.expression()?;
+        let consumed = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        match consumed {
+            Ok(_) => Ok(Box::new(Print { expression })),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn expression_statement(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
+        let expression = self.expression()?;
+        let consumed = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        match consumed {
+            Ok(_) => Ok(Box::new(Expression { expression })),
+            Err(e) => Err(e),
+        }
     }
 
     fn equality(&mut self) -> Result<Box<dyn Expr>, &'static str> {
@@ -104,7 +135,7 @@ impl<'a> Parser<'a> {
 
     fn unary(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         let types = &[TokenType::Minus, TokenType::Bang];
-        let mut matching = self.matching(types);
+        let matching = self.matching(types);
         if matching {
             let operator = self.previous().clone();
             let right = self.unary()?;
@@ -127,7 +158,7 @@ impl<'a> Parser<'a> {
             }));
         }
 
-        if self.matching((&[TokenType::Nil])) {
+        if self.matching(&[TokenType::Nil]) {
             return Ok(Box::new(Literal {
                 value: LoxValue::None,
             }));

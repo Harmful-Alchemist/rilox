@@ -1,6 +1,4 @@
-use crate::expr::Expr;
-use crate::lox::Lox;
-use crate::loxvalue::LoxValue;
+use crate::stmt::Stmt;
 use crate::token::Token;
 
 pub struct Interpreter {}
@@ -10,13 +8,13 @@ impl Interpreter {
         Interpreter {}
     }
 
-    pub fn interpret(&mut self, expression: &dyn Expr) -> Result<(), (String, Token)> {
-        match expression.evaluate() {
-            Ok(value) => {
-                println!("{}", value);
-                Ok(())
+    pub fn interpret(&mut self, statements: Vec<Box<dyn Stmt>>) -> Result<(), (String, Token)> {
+        for statement in statements {
+            match statement.evaluate() {
+                Ok(_) => {}
+                Err((msg, token)) => return Err((String::from(msg), token.clone())),
             }
-            Err((msg, token)) => Err((String::from(msg), token.clone())),
         }
+        Ok(())
     }
 }

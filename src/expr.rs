@@ -102,12 +102,6 @@ pub struct Literal {
 impl Expr for Literal {
     fn pretty_print(&self) -> String {
         format!("{}", self.value)
-        // match &self.value {
-        //     LoxValue::String(a) => format!("\"{}\"", a.clone()),
-        //     LoxValue::Number(a) => format!("{}", a),
-        //     LoxValue::Bool(a) => format!("{}", a),
-        //     LoxValue::None => String::from("nil"),
-        // }
     }
 
     fn evaluate(&self) -> Result<LoxValue, (&'static str, &Token)> {

@@ -1,6 +1,5 @@
 use std::fmt;
 use std::fmt::Formatter;
-use std::path::Display;
 
 #[derive(Debug, Clone)]
 pub enum LoxValue {
