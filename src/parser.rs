@@ -212,10 +212,7 @@ impl<'a> Parser<'a> {
             return Ok(Box::new(Grouping { expression }));
         }
 
-        match self.error(&self.peek().clone(), "Expect expression.") {
-            Ok(_) => Ok(Box::new(NoOp {})),
-            Err(e) => Err(e),
-        }
+        Ok(Box::new(NoOp {}))
     }
 
     fn matching(&mut self, types: &[TokenType]) -> bool {
@@ -244,7 +241,10 @@ impl<'a> Parser<'a> {
     }
 
     fn advance(&mut self) -> &Token {
-        self.current = self.current + 1;
+        if !self.is_at_end() {
+            self.current = self.current + 1;
+        }
+
         self.previous()
     }
 

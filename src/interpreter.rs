@@ -1,15 +1,15 @@
+use crate::environment::Environment;
 use crate::stmt::Stmt;
 use crate::token::Token;
-use crate::environment::Environment;
 
 pub struct Interpreter {
-    environment: Environment
+    environment: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
-            environment: Environment::new()
+            environment: Environment::new(),
         }
     }
 

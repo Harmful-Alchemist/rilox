@@ -1,6 +1,6 @@
+use crate::environment::Environment;
 use crate::expr::Expr;
 use crate::token::Token;
-use crate::environment::Environment;
 
 pub trait Stmt {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)>;
@@ -43,7 +43,7 @@ pub struct Var {
 impl Stmt for Var {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
         let val = self.initializer.evaluate(env)?;
-        env.define(self.name.lexeme.clone(),val);
+        env.define(self.name.lexeme.clone(), val);
         Ok(())
     }
 }

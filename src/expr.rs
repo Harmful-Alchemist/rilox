@@ -1,10 +1,9 @@
+use crate::environment::Environment;
 use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
-use crate::environment::Environment;
 
 pub trait Expr {
-    // fn pretty_print(&self) -> String;
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)>;
 }
 
@@ -15,15 +14,6 @@ pub struct Binary {
 }
 
 impl Expr for Binary {
-    // fn pretty_print(&self) -> String {
-    //     format!(
-    //         "({} {} {})",
-    //         self.operator.lexeme,
-    //         self.left.pretty_print(),
-    //         self.right.pretty_print()
-    //     )
-    // }
-
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         let left = self.left.evaluate(env)?;
         let right = self.right.evaluate(env)?;
@@ -61,7 +51,7 @@ impl Expr for Binary {
                     Ok(LoxValue::String(format!("{}{}", a, b)))
                 }
                 _ => Err((
-                             String::from("Can only add two numbers or concatenate two strings."),
+                    String::from("Can only add two numbers or concatenate two strings."),
                     token,
                 )),
             },
@@ -87,10 +77,6 @@ pub struct Grouping {
 }
 
 impl Expr for Grouping {
-    // fn pretty_print(&self) -> String {
-    //     format!("(group {})", self.expression.pretty_print())
-    // }
-
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         self.expression.evaluate(env)
     }
@@ -101,10 +87,6 @@ pub struct Literal {
 }
 
 impl Expr for Literal {
-    // fn pretty_print(&self) -> String {
-    //     format!("{}", self.value)
-    // }
-
     fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         Ok(self.value.clone())
     }
@@ -116,10 +98,6 @@ pub struct Unary {
 }
 
 impl Expr for Unary {
-    // fn pretty_print(&self) -> String {
-    //     format!("({} {})", self.operator.lexeme, self.right.pretty_print())
-    // }
-
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         let right = self.right.evaluate(env)?;
         match self.operator.token_type {
@@ -141,7 +119,7 @@ impl Expr for Variable {
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         match env.get(&self.name) {
             Ok(val) => Ok(val.clone()),
-            Err(e) => Err((e, &self.name))
+            Err(e) => Err((e, &self.name)),
         }
     }
 }
