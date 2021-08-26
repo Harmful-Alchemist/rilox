@@ -1,7 +1,7 @@
-use crate::expr::{Binary, Expr, Grouping, Literal, Unary};
+use crate::expr::{Binary, Expr, Grouping, Literal, NoOp, Unary, Variable};
 use crate::lox::Lox;
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Expression, Print, Stmt};
+use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse(&mut self) -> Vec<Box<dyn Stmt>> {
         let mut statements: Vec<Box<dyn Stmt>> = Vec::new();
         while !self.is_at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(statement) => statements.push(statement),
                 Err(_) => {}
             }
@@ -33,6 +33,21 @@ impl<'a> Parser<'a> {
 
     fn expression(&mut self) -> Result<Box<dyn Expr>, &'static str> {
         self.equality()
+    }
+
+    fn declaration(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
+        if self.matching(&[TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            let statement = self.statement();
+            match statement {
+                Ok(_) => statement,
+                Err(e) => {
+                    self.synchronize();
+                    Err(e)
+                }
+            }
+        }
     }
 
     fn statement(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
@@ -49,6 +64,21 @@ impl<'a> Parser<'a> {
         match consumed {
             Ok(_) => Ok(Box::new(Print { expression })),
             Err(e) => Err(e),
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Box<dyn Stmt>, &'static str> {
+        let name = self
+            .consume(TokenType::Identifier, "Expect variable name.")?
+            .clone();
+        if self.matching(&[TokenType::Equal]) {
+            let initializer = self.expression()?;
+            Ok(Box::new(Var { name, initializer }))
+        } else {
+            Ok(Box::new(Var {
+                name,
+                initializer: Box::new(NoOp {}),
+            }))
         }
     }
 
@@ -170,13 +200,22 @@ impl<'a> Parser<'a> {
             }));
         }
 
+        if self.matching(&[TokenType::Identifier]) {
+            return Ok(Box::new(Variable {
+                name: self.previous().clone(),
+            }));
+        }
+
         if self.matching(&[TokenType::LeftParen]) {
             let expression = self.expression()?;
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
             return Ok(Box::new(Grouping { expression }));
         }
 
-        self.error(&self.peek().clone(), "Expect expression.")
+        match self.error(&self.peek().clone(), "Expect expression.") {
+            Ok(_) => Ok(Box::new(NoOp {})),
+            Err(e) => Err(e),
+        }
     }
 
     fn matching(&mut self, types: &[TokenType]) -> bool {
@@ -189,16 +228,12 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn consume(
-        &mut self,
-        ttype: TokenType,
-        msg: &'static str,
-    ) -> Result<Box<dyn Expr>, &'static str> {
+    fn consume(&mut self, ttype: TokenType, msg: &'static str) -> Result<&Token, &'static str> {
         if self.check(ttype) {
-            self.advance();
-            Ok(Box::new(Literal {
-                value: LoxValue::None,
-            }))
+            Ok(self.advance())
+            // Ok(Box::new(Literal {
+            //     value: LoxValue::None,
+            // }))
         } else {
             self.error(&self.peek().clone(), msg)
         }
@@ -225,7 +260,7 @@ impl<'a> Parser<'a> {
         &self.tokens[self.current - 1]
     }
 
-    fn error(&mut self, token: &Token, msg: &'static str) -> Result<Box<dyn Expr>, &'static str> {
+    fn error(&mut self, token: &Token, msg: &'static str) -> Result<&Token, &'static str> {
         self.lox.error_parse(token, msg);
         Err(msg)
     }
