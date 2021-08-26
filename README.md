@@ -1,0 +1,1 @@
+Following along with [crafting interpreters](https://craftinginterpreters.com/) making an interpreter for Lox in rust
