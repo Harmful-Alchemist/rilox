@@ -1,5 +1,6 @@
 use crate::environment::Environment;
-use crate::expr::Expr;
+use crate::expr::{is_truthy, Expr};
+use crate::loxvalue::LoxValue;
 use crate::token::Token;
 
 pub trait Stmt {
@@ -60,5 +61,29 @@ impl Stmt for Block {
             statement.evaluate(scoped_env);
         }
         Ok(())
+    }
+}
+
+pub struct If {
+    pub(crate) condition: Box<dyn Expr>,
+    pub(crate) then_branch: Box<dyn Stmt>,
+    pub(crate) else_branch: Option<Box<dyn Stmt>>,
+}
+
+impl Stmt for If {
+    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+        match is_truthy(self.condition.evaluate(env)?, false)? {
+            LoxValue::Bool(true) => {
+                self.then_branch.evaluate(env)?;
+                Ok(())
+            }
+            _ => match &self.else_branch {
+                None => Ok(()),
+                Some(a) => {
+                    a.evaluate(env)?;
+                    Ok(())
+                }
+            },
+        }
     }
 }

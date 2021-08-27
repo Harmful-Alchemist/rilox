@@ -16,6 +16,7 @@ pub enum Kind {
     Variable(Token),
     NoOp,
     Assign,
+    Logical,
 }
 
 pub struct Binary {
@@ -186,7 +187,33 @@ impl Expr for Assign {
     }
 }
 
-fn is_truthy(val: LoxValue, invert: bool) -> Result<LoxValue, (String, &'static Token)> {
+pub struct Logical {
+    pub(crate) left: Box<dyn Expr>,
+    pub(crate) operator: Token,
+    pub(crate) right: Box<dyn Expr>,
+}
+
+impl Expr for Logical {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+        let left = self.left.evaluate(env)?;
+        match self.operator.token_type {
+            TokenType::Or => match is_truthy(left.clone(), false)? {
+                LoxValue::Bool(true) => Ok(left.clone()),
+                _ => Ok(self.right.evaluate(env)?),
+            },
+            _ => match is_truthy(left.clone(), true)? {
+                LoxValue::Bool(true) => Ok(left.clone()),
+                _ => Ok(self.right.evaluate(env)?),
+            },
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Logical
+    }
+}
+
+pub fn is_truthy(val: LoxValue, invert: bool) -> Result<LoxValue, (String, &'static Token)> {
     match val {
         LoxValue::Bool(a) => {
             if invert {

@@ -1,6 +1,6 @@
-use crate::expr::{Assign, Binary, Expr, Grouping, Kind, Literal, NoOp, Unary, Variable};
+use crate::expr::{Assign, Binary, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable};
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Block, Expression, Print, Stmt, Var};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -51,6 +51,9 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+        if self.matching(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.matching(&[TokenType::Print]) {
             return self.print_statement();
         }
@@ -61,6 +64,25 @@ impl Parser {
         }
 
         self.expression_statement()
+    }
+
+    fn if_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
+
+        let then_branch = self.statement()?;
+        let mut else_branch = None;
+
+        if self.matching(&[TokenType::Else]) {
+            else_branch = Some(self.statement()?);
+        }
+
+        Ok(Box::new(If {
+            condition,
+            then_branch,
+            else_branch,
+        }))
     }
 
     fn print_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
@@ -109,7 +131,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
         if self.matching(&[TokenType::Equal]) {
             let equals = self.previous().clone();
             let value = self.assignment()?;
@@ -125,6 +147,35 @@ impl Parser {
         } else {
             Ok(expr)
         }
+    }
+
+    fn or(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+        let mut expr = self.and()?;
+
+        while self.matching(&[TokenType::Or]) {
+            let operator = self.previous().clone();
+            let right = self.and()?;
+            expr = Box::new(Logical {
+                left: expr,
+                operator,
+                right,
+            })
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+        let mut expr = self.equality()?;
+        while self.matching(&[TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+            expr = Box::new(Logical {
+                left: expr,
+                operator,
+                right,
+            })
+        }
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
