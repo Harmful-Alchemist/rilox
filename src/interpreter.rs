@@ -6,7 +6,7 @@ pub struct Interpreter {
     environment: Environment,
 }
 
-impl Interpreter{
+impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             environment: Environment::new(),

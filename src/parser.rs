@@ -1,6 +1,6 @@
 use crate::expr::{Assign, Binary, Expr, Grouping, Kind, Literal, NoOp, Unary, Variable};
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Expression, Print, Stmt, Var, Block};
+use crate::stmt::{Block, Expression, Print, Stmt, Var};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -57,9 +57,7 @@ impl Parser {
 
         if self.matching(&[TokenType::LeftBrace]) {
             let statements = self.block()?;
-            return Ok(Box::new(Block {
-                statements
-            }));
+            return Ok(Box::new(Block { statements }));
         }
 
         self.expression_statement()
@@ -99,7 +97,7 @@ impl Parser {
         }
     }
 
-    fn block(&mut self)-> Result<Vec<Box<dyn Stmt>>, (&'static str, Token)> {
+    fn block(&mut self) -> Result<Vec<Box<dyn Stmt>>, (&'static str, Token)> {
         let mut statements: Vec<Box<dyn Stmt>> = Vec::new();
 
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {

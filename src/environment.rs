@@ -7,11 +7,11 @@ pub struct Environment {
     pub(crate) values: HashMap<String, LoxValue>,
 }
 
-impl Clone for Environment{
+impl Clone for Environment {
     fn clone(&self) -> Self {
-        Environment{
+        Environment {
             enclosing: self.enclosing.clone(),
-            values: self.values.clone()
+            values: self.values.clone(),
         }
     }
 
@@ -29,12 +29,11 @@ impl Environment {
         }
     }
 
-    pub fn new_child(env: &mut Environment) ->  Self {
+    pub fn new_child(env: &mut Environment) -> Self {
         Environment {
             enclosing: Some(Box::from(env.clone())),
             values: HashMap::new(),
         }
-
     }
 
     pub(crate) fn define(&mut self, key: String, value: LoxValue) {
