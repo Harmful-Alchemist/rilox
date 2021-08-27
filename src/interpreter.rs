@@ -2,11 +2,11 @@ use crate::environment::Environment;
 use crate::stmt::Stmt;
 use crate::token::Token;
 
-pub struct Interpreter {
-    environment: Environment,
+pub struct Interpreter<'a> {
+    environment: Environment<'a>,
 }
 
-impl Interpreter {
+impl Interpreter<'_> {
     pub fn new() -> Self {
         Interpreter {
             environment: Environment::new(),

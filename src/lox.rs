@@ -7,13 +7,13 @@ use crate::tokentype::TokenType;
 use std::io::Write;
 use std::{fs, io};
 
-pub struct Lox {
+pub struct Lox<'a> {
     had_error: bool,
     had_runtime_error: bool,
-    interpreter: Interpreter,
+    interpreter: Interpreter<'a>,
 }
 
-impl Lox {
+impl Lox<'_> {
     pub fn new() -> Self {
         Lox {
             had_error: false,
@@ -53,10 +53,17 @@ impl Lox {
     }
 
     fn run(&mut self, source: String) {
-        let mut scanner = Scanner::new(source, self);
-        let tokens: Vec<Token> = scanner.scan_tokens();
-        let mut parser = Parser::new(tokens, self);
-        let statements = parser.parse();
+        let mut scanner = Scanner::new(source);
+        let tokens: Vec<Token> = match scanner.scan_tokens() {
+            Ok(a) => a,
+            Err((line, string)) => {self.error(line, string);
+            Vec::new()}
+        } ;
+        let mut parser = Parser::new(tokens);
+        let (statements, errors) = parser.parse();
+        for (token, msg) in errors{
+            self.error_parse(&token, &*msg);
+        }
         match self.interpreter.interpret(statements) {
             Ok(_) => {}
             Err((msg, token)) => self.runtime_error((String::from(msg), token.clone())),

@@ -5,6 +5,17 @@ use crate::tokentype::TokenType;
 
 pub trait Expr {
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)>;
+    fn kind(&self) -> Kind;
+}
+
+pub enum Kind {
+    Binary,
+    Grouping,
+    Literal,
+    Unary,
+    Variable(Token),
+    NoOp,
+    Assign,
 }
 
 pub struct Binary {
@@ -70,6 +81,10 @@ impl Expr for Binary {
             _ => Err((String::from("Unknown binary operation."), token)),
         }
     }
+
+    fn kind(&self) -> Kind {
+        Kind::Binary
+    }
 }
 
 pub struct Grouping {
@@ -80,6 +95,10 @@ impl Expr for Grouping {
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         self.expression.evaluate(env)
     }
+
+    fn kind(&self) -> Kind {
+        Kind::Grouping
+    }
 }
 
 pub struct Literal {
@@ -89,6 +108,10 @@ pub struct Literal {
 impl Expr for Literal {
     fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         Ok(self.value.clone())
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Literal
     }
 }
 
@@ -109,6 +132,10 @@ impl Expr for Unary {
             _ => Err((String::from("Unknown unary operation"), &self.operator)),
         }
     }
+
+    fn kind(&self) -> Kind {
+        Kind::Unary
+    }
 }
 
 pub struct Variable {
@@ -122,6 +149,10 @@ impl Expr for Variable {
             Err(e) => Err((e, &self.name)),
         }
     }
+
+    fn kind(&self) -> Kind {
+        Kind::Variable(self.name.clone())
+    }
 }
 
 pub struct NoOp {
@@ -131,6 +162,27 @@ pub struct NoOp {
 impl Expr for NoOp {
     fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         Ok(LoxValue::None)
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::NoOp
+    }
+}
+
+pub struct Assign {
+    pub(crate) name: Token,
+    pub(crate) value: Box<dyn Expr>,
+}
+
+impl Expr for Assign {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+        let value = self.value.evaluate(env)?;
+        env.assign(&self.name, value.clone());
+        Ok(value.clone())
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Assign
     }
 }
 

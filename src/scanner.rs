@@ -1,12 +1,10 @@
-use crate::lox::Lox;
 use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use phf::phf_map;
 
-pub struct Scanner<'a> {
+pub struct Scanner {
     source: String,
-    lox: &'a mut Lox,
     tokens: Vec<Token>,
     start: usize,
     current: usize,
@@ -32,11 +30,10 @@ static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
 "while" => TokenType::While,
 };
 
-impl<'a> Scanner<'a> {
-    pub fn new(source: String, lox: &'a mut Lox) -> Self {
+impl Scanner {
+    pub fn new(source: String) -> Self {
         Scanner {
             source,
-            lox,
             tokens: Vec::new(),
             start: 0,
             current: 0,
@@ -44,10 +41,10 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Vec<Token> {
+    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, (u64, String)> {
         while !self.is_at_end() {
             self.start = self.current;
-            self.scan_token();
+            self.scan_token()?;
         }
 
         self.tokens.push(Token {
@@ -56,10 +53,10 @@ impl<'a> Scanner<'a> {
             literal: LoxValue::None,
             line: self.line as u64,
         });
-        self.tokens.to_vec()
+        Ok(self.tokens.to_vec())
     }
 
-    fn scan_token(&mut self) {
+    fn scan_token(&mut self) -> Result<(), (u64, String)> {
         let c = self.advance();
         match c {
             '(' => self.add_token(TokenType::LeftParen),
@@ -118,18 +115,18 @@ impl<'a> Scanner<'a> {
             }
             ' ' | '\r' | '\t' => (),
             '\n' => self.line = self.line + 1,
-            '"' => self.string(),
+            '"' => self.string()?,
             ch => {
                 if is_digit(ch) {
                     self.number();
                 } else if is_alpha(ch) {
                     self.identifier();
                 } else {
-                    self.lox
-                        .error(self.line as u64, String::from("Unexpected character."))
+                    return Err((self.line as u64, String::from("Unexpected character.")))
                 }
             }
         }
+        Ok(())
     }
 
     fn identifier(&mut self) {
@@ -160,7 +157,7 @@ impl<'a> Scanner<'a> {
         self.add_token_total(TokenType::Number, LoxValue::Number(number));
     }
 
-    fn string(&mut self) {
+    fn string(&mut self) -> Result<(), (u64,String)> {
         let mut peeked = self.peek();
         while peeked != '"' && !self.is_at_end() {
             if peeked == '\n' {
@@ -171,15 +168,14 @@ impl<'a> Scanner<'a> {
         }
 
         if self.is_at_end() {
-            self.lox
-                .error(self.line as u64, String::from("Unterminated string."));
-            return ();
+            return Err((self.line as u64, String::from("Unterminated string.")));
         }
 
         self.advance();
 
         let value: String = String::from(&self.source[self.start + 1..self.current - 1]);
         self.add_token_total(TokenType::String, LoxValue::String(value));
+        Ok(())
     }
 
     fn match_char(&mut self, expected: char) -> bool {
