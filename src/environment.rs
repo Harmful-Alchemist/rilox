@@ -2,12 +2,26 @@ use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use std::collections::HashMap;
 
-pub struct Environment<'a> {
-    enclosing: Option<&'a mut Environment<'a>>,
-    values: HashMap<String, LoxValue>,
+pub struct Environment {
+    pub(crate) enclosing: Option<Box<Environment>>,
+    pub(crate) values: HashMap<String, LoxValue>,
 }
 
-impl<'a> Environment<'a> {
+impl Clone for Environment{
+    fn clone(&self) -> Self {
+        Environment{
+            enclosing: self.enclosing.clone(),
+            values: self.values.clone()
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.values = source.values.clone();
+        self.enclosing = source.enclosing.clone();
+    }
+}
+
+impl Environment {
     pub fn new() -> Self {
         Environment {
             enclosing: None,
@@ -15,11 +29,12 @@ impl<'a> Environment<'a> {
         }
     }
 
-    pub fn new_child(env: &'a mut Environment<'a>) -> Self {
+    pub fn new_child(env: &mut Environment) ->  Self {
         Environment {
-            enclosing: Some(env),
+            enclosing: Some(Box::from(env.clone())),
             values: HashMap::new(),
         }
+
     }
 
     pub(crate) fn define(&mut self, key: String, value: LoxValue) {

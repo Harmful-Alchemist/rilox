@@ -46,4 +46,21 @@ impl Stmt for Var {
         env.define(self.name.lexeme.clone(), val);
         Ok(())
     }
+
+}
+
+
+pub struct Block {
+    pub(crate)  statements: Vec<Box<dyn Stmt>>
+}
+
+impl Stmt for Block{
+    fn evaluate(&self,  env: &mut Environment) -> Result<(), (String, &Token)> {
+        let scoped_env = &mut Environment::new_child(env);
+
+         for statement in &self.statements{
+             statement.evaluate(scoped_env);
+         }
+        Ok(())
+    }
 }

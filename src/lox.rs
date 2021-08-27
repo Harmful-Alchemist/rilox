@@ -7,13 +7,13 @@ use crate::tokentype::TokenType;
 use std::io::Write;
 use std::{fs, io};
 
-pub struct Lox<'a> {
+pub struct Lox {
     had_error: bool,
     had_runtime_error: bool,
-    interpreter: Interpreter<'a>,
+    interpreter: Interpreter,
 }
 
-impl Lox<'_> {
+impl Lox {
     pub fn new() -> Self {
         Lox {
             had_error: false,
