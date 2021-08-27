@@ -56,12 +56,14 @@ impl Lox<'_> {
         let mut scanner = Scanner::new(source);
         let tokens: Vec<Token> = match scanner.scan_tokens() {
             Ok(a) => a,
-            Err((line, string)) => {self.error(line, string);
-            Vec::new()}
-        } ;
+            Err((line, string)) => {
+                self.error(line, string);
+                Vec::new()
+            }
+        };
         let mut parser = Parser::new(tokens);
         let (statements, errors) = parser.parse();
-        for (token, msg) in errors{
+        for (token, msg) in errors {
             self.error_parse(&token, &*msg);
         }
         match self.interpreter.interpret(statements) {

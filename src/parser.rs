@@ -25,7 +25,7 @@ impl Parser {
         while !self.is_at_end() {
             match self.declaration() {
                 Ok(statement) => statements.push(statement),
-                Err((msg, token)) => errors.push((token.clone(), String::from(msg)))
+                Err((msg, token)) => errors.push((token.clone(), String::from(msg))),
             }
         }
         (statements, errors)
@@ -43,7 +43,7 @@ impl Parser {
             match statement {
                 Ok(_) => statement,
                 Err(e) => {
-                        self.synchronize();
+                    self.synchronize();
                     Err(e)
                 }
             }
@@ -99,12 +99,7 @@ impl Parser {
             let value = self.assignment()?;
 
             match expr.kind() {
-                Kind::Variable(name) => {
-                    Ok(Box::new(Assign {
-                        name,
-                        value,
-                    }))
-                }
+                Kind::Variable(name) => Ok(Box::new(Assign { name, value })),
                 _ => {
                     const MSG: &str = "Invalid assignment target.";
                     // self.error(&equals, MSG);
@@ -250,7 +245,11 @@ impl Parser {
         false
     }
 
-    fn consume(&mut self, ttype: TokenType, msg: &'static str) -> Result<&Token, (&'static str, Token)> {
+    fn consume(
+        &mut self,
+        ttype: TokenType,
+        msg: &'static str,
+    ) -> Result<&Token, (&'static str, Token)> {
         if self.check(ttype) {
             Ok(self.advance())
         } else {

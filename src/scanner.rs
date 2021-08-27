@@ -122,7 +122,7 @@ impl Scanner {
                 } else if is_alpha(ch) {
                     self.identifier();
                 } else {
-                    return Err((self.line as u64, String::from("Unexpected character.")))
+                    return Err((self.line as u64, String::from("Unexpected character.")));
                 }
             }
         }
@@ -157,7 +157,7 @@ impl Scanner {
         self.add_token_total(TokenType::Number, LoxValue::Number(number));
     }
 
-    fn string(&mut self) -> Result<(), (u64,String)> {
+    fn string(&mut self) -> Result<(), (u64, String)> {
         let mut peeked = self.peek();
         while peeked != '"' && !self.is_at_end() {
             if peeked == '\n' {
