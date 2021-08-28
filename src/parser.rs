@@ -1,6 +1,6 @@
 use crate::expr::{Assign, Binary, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable};
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -51,11 +51,17 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+        if self.matching(&[TokenType::For]) {
+            return self.for_statement();
+        }
         if self.matching(&[TokenType::If]) {
             return self.if_statement();
         }
         if self.matching(&[TokenType::Print]) {
             return self.print_statement();
+        }
+        if self.matching(&[TokenType::While]) {
+            return self.while_statement();
         }
 
         if self.matching(&[TokenType::LeftBrace]) {
@@ -64,6 +70,66 @@ impl Parser {
         }
 
         self.expression_statement()
+    }
+
+    fn for_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+        let initializer: Option<Box<dyn Stmt>> = if self.matching(&[TokenType::SemiColon]) {
+            None
+        } else if self.matching(&[TokenType::Var]) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let condition: Option<Box<dyn Expr>> = if !self.check(TokenType::SemiColon) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::SemiColon, "Expect ';' after loop condition.")?;
+
+        let increment: Option<Box<dyn Expr>> = if !self.check(TokenType::RightParen) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+
+        let mut body = self.statement()?;
+
+        match increment {
+            Some(a) => {
+                body = Box::new(Block {
+                    statements: vec![body, Box::new(Expression { expression: a })],
+                })
+            }
+            None => {}
+        }
+
+        let condition_result = match condition {
+            None => Box::new(Literal {
+                value: LoxValue::Bool(true),
+            }),
+            Some(a) => a,
+        };
+
+        body = Box::new(While {
+            condition: condition_result,
+            body,
+        });
+
+        match initializer {
+            None => {}
+            Some(a) => {
+                body = Box::new(Block {
+                    statements: vec![a, body],
+                })
+            }
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
@@ -95,19 +161,29 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
-        //TODO hmm used without ending with ; consume semi colon somehow
         let name = self
             .consume(TokenType::Identifier, "Expect variable name.")?
             .clone();
-        if self.matching(&[TokenType::Equal]) {
-            let initializer = self.expression()?;
-            Ok(Box::new(Var { name, initializer }))
-        } else {
-            Ok(Box::new(Var {
-                name,
-                initializer: Box::new(NoOp {}),
-            }))
-        }
+        let to_return: Result<Box<dyn Stmt>, (&'static str, Token)> =
+            if self.matching(&[TokenType::Equal]) {
+                let initializer = self.expression()?;
+                Ok(Box::new(Var { name, initializer }))
+            } else {
+                Ok(Box::new(Var {
+                    name,
+                    initializer: Box::new(NoOp {}),
+                }))
+            };
+        self.consume(TokenType::SemiColon, "Expect ';' after var declaration.")?;
+        to_return
+    }
+
+    fn while_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+        self.consume(TokenType::LeftParen, "Expect '(' after while.")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
+        let body = self.statement()?;
+        Ok(Box::new(While { condition, body }))
     }
 
     fn expression_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {

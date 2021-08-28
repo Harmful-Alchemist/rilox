@@ -1,0 +1,13 @@
+var i = 0;
+
+while (i < 3) {
+    print "--------------";
+    print i;
+    i = i+1;
+    {
+        print "inner block +++++++++";
+        print i;
+        //assign below not executed in block statement, but in assign statement?
+        i = i + 1;
+    }
+}

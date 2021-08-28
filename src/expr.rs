@@ -178,8 +178,10 @@ pub struct Assign {
 impl Expr for Assign {
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
         let value = self.value.evaluate(env)?;
-        env.assign(&self.name, value.clone());
-        Ok(value.clone())
+        match env.assign(&self.name, value.clone()) {
+            Ok(_) => Ok(value.clone()),
+            Err((msg, _token)) => Err((msg, &self.name)),
+        }
     }
 
     fn kind(&self) -> Kind {

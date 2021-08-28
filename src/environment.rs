@@ -58,13 +58,10 @@ impl Environment {
         } else {
             match &mut self.enclosing {
                 None => {
-                    let msg = format!("Undefined variable {}.", name.lexeme);
+                    let msg = format!("Undefined variable '{}'.", name.lexeme);
                     Err((msg, name.clone()))
                 }
-                Some(parent) => {
-                    parent.assign(name, value);
-                    Ok(())
-                }
+                Some(parent) => parent.assign(name, value),
             }
         }
     }

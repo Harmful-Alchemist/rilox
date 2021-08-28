@@ -2,6 +2,7 @@ use crate::environment::Environment;
 use crate::expr::{is_truthy, Expr};
 use crate::loxvalue::LoxValue;
 use crate::token::Token;
+use crate::tokentype::TokenType;
 
 pub trait Stmt {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)>;
@@ -55,11 +56,12 @@ pub struct Block {
 
 impl Stmt for Block {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
-        let scoped_env = &mut Environment::new_child(env);
+        let mut scoped_env = Environment::new_child(env);
 
         for statement in &self.statements {
-            statement.evaluate(scoped_env);
+            statement.evaluate(&mut scoped_env)?;
         }
+        update_env(env, scoped_env);
         Ok(())
     }
 }
@@ -84,6 +86,38 @@ impl Stmt for If {
                     Ok(())
                 }
             },
+        }
+    }
+}
+
+pub struct While {
+    pub(crate) condition: Box<dyn Expr>,
+    pub(crate) body: Box<dyn Stmt>,
+}
+
+impl Stmt for While {
+    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+        while is_truthy(self.condition.evaluate(env)?, false)? == LoxValue::Bool(true) {
+            self.body.evaluate(env)?;
+        }
+        Ok(())
+    }
+}
+
+fn update_env(env: &mut Environment, scoped_env: Environment) -> &mut Environment {
+    match scoped_env.enclosing.clone() {
+        None => env,
+        Some(enclosing) => {
+            for (key, val) in enclosing.values.clone() {
+                let fake_token = Token {
+                    token_type: TokenType::Var,
+                    lexeme: key,
+                    literal: LoxValue::None,
+                    line: 0,
+                };
+                env.assign(&fake_token, val);
+            }
+            update_env(env, *enclosing)
         }
     }
 }
