@@ -1,6 +1,6 @@
+use crate::token::Token;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use crate::token::Token;
 use std::rc::Rc;
 
 #[derive(Debug, Clone)]
@@ -9,7 +9,7 @@ pub enum LoxValue {
     Number(f64),
     Bool(bool),
     None,
-    Callable(Box<Callable>),
+    Callable(Rc<Callable>),
 }
 
 pub struct Callable {
@@ -29,16 +29,16 @@ impl Debug for Callable {
     }
 }
 
-impl Clone for Callable {
-    fn clone(&self) -> Self {
-        Callable {
-            arity: self.arity,
-            call: self.call.clone(),
-            string: self.string.clone(),
-            name: self.name.clone(),
-        }
-    }
-}
+// impl Clone for Callable {
+//     fn clone(&self) -> Self {
+//         Callable {
+//             arity: self.arity,
+//             call: self.call.clone(),
+//             string: self.string.clone(),
+//             name: self.name.clone(),
+//         }
+//     }
+// }
 
 impl PartialEq for LoxValue {
     fn eq(&self, other: &Self) -> bool {
@@ -47,7 +47,7 @@ impl PartialEq for LoxValue {
             (LoxValue::Number(a), LoxValue::Number(b)) => a == b,
             (LoxValue::None, LoxValue::None) => true,
             (LoxValue::Bool(a), LoxValue::Bool(b)) => a == b,
-            (LoxValue::Callable(a), LoxValue::Callable(b)) => false,
+            (LoxValue::Callable(_a), LoxValue::Callable(_b)) => false,
             //TODO Can't compare functions I guess, maybe with the Rc?
             _ => false,
         }

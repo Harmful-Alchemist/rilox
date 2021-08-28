@@ -1,6 +1,32 @@
+print "hi!";
+
 fun count(n){
-    if(n > 1) count(n-1);
+    if(n > 1)
+    {count(n-1);}
     print n;
 }
 
 count(3);
+
+fun right(n) {
+if (n>2){
+print "greater than 2";
+}
+}
+right(2);
+right(3);
+
+fun printno() {
+print "no args";
+}
+
+printno();
+
+var bla = "bla";
+fun somearg(arg){
+print bla;
+print arg;
+}
+bla = "whee";
+somearg("some arg");
+somearg("some arg2");

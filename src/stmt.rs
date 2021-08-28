@@ -1,18 +1,17 @@
 use crate::environment::Environment;
 use crate::expr::{is_truthy, Expr};
-use crate::loxvalue::{LoxValue, Callable};
+use crate::interpreter::Interpreter;
+use crate::loxvalue::{Callable, LoxValue};
 use crate::token::Token;
 use crate::tokentype::TokenType;
-use crate::interpreter::Interpreter;
 use std::rc::Rc;
-
 
 pub trait Stmt {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)>;
 }
 
 pub struct Expression {
-    pub(crate) expression: Box<dyn Expr>,
+    pub(crate) expression: Rc<dyn Expr>,
 }
 
 impl Stmt for Expression {
@@ -25,7 +24,7 @@ impl Stmt for Expression {
 }
 
 pub struct Print {
-    pub(crate) expression: Box<dyn Expr>,
+    pub(crate) expression: Rc<dyn Expr>,
 }
 
 impl Stmt for Print {
@@ -42,7 +41,7 @@ impl Stmt for Print {
 
 pub struct Var {
     pub(crate) name: Token,
-    pub(crate) initializer: Box<dyn Expr>,
+    pub(crate) initializer: Rc<dyn Expr>,
 }
 
 impl Stmt for Var {
@@ -54,7 +53,7 @@ impl Stmt for Var {
 }
 
 pub struct Block {
-    pub(crate) statements: Vec<Box<dyn Stmt>>,
+    pub(crate) statements: Vec<Rc<dyn Stmt>>,
 }
 
 impl Stmt for Block {
@@ -70,9 +69,9 @@ impl Stmt for Block {
 }
 
 pub struct If {
-    pub(crate) condition: Box<dyn Expr>,
-    pub(crate) then_branch: Box<dyn Stmt>,
-    pub(crate) else_branch: Option<Box<dyn Stmt>>,
+    pub(crate) condition: Rc<dyn Expr>,
+    pub(crate) then_branch: Rc<dyn Stmt>,
+    pub(crate) else_branch: Option<Rc<dyn Stmt>>,
 }
 
 impl Stmt for If {
@@ -94,8 +93,8 @@ impl Stmt for If {
 }
 
 pub struct While {
-    pub(crate) condition: Box<dyn Expr>,
-    pub(crate) body: Box<dyn Stmt>,
+    pub(crate) condition: Rc<dyn Expr>,
+    pub(crate) body: Rc<dyn Stmt>,
 }
 
 impl Stmt for While {
@@ -108,31 +107,35 @@ impl Stmt for While {
 }
 
 pub struct Function {
-   pub(crate) name: Token,
-   pub(crate) params: Vec<Token>,
-   pub(crate) body:Vec<Rc<dyn Stmt>>
+    pub(crate) name: Token,
+    pub(crate) params: Vec<Token>,
+    pub(crate) body: Vec<Rc<dyn Stmt>>,
 }
 
-impl Stmt for Function{
+impl Stmt for Function {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
-        let function = LoxValue::Callable(Box::new(Callable{
+        let env_clone = env.clone();
+        let cloned_body = self.body.clone();
+        let cloned_params = self.params.clone();
+        let function = LoxValue::Callable(Rc::new(Callable {
             arity: self.params.len(),
-            call: Rc::new(|arguments| {
-                let mut scoped_env = env.clone();
-
-                for (i, parameter) in self.params.clone().iter().enumerate() {
-                    scoped_env.define(parameter.lexeme.clone(), arguments.get(i).expect("Checked").clone());
+            call: Rc::new(move |arguments| {
+                let mut clone_clone_env = env_clone.clone();
+                let mut scoped_env = Environment::new_child(&mut clone_clone_env);
+                for (i, parameter) in cloned_params.iter().enumerate() {
+                    scoped_env.define(
+                        parameter.lexeme.clone(),
+                        arguments.get(i).expect("Checked").clone(),
+                    );
                 }
                 let mut interpreter = Interpreter::new_with_env(scoped_env.clone());
-                //TODO cannot clone this! Can impl clone manually for all expr and stmt I guess.... Also is move necess? Might help when
-                // cloning the loxvalue cause need a solution there. Or Rc statements?
-                interpreter.interpret(self.body.clone());
+                interpreter.interpret(cloned_body.clone());
                 LoxValue::None
-
             }),
             string: format!("<fn {}>", self.name.lexeme),
-            name: self.name.clone()
+            name: self.name.clone(),
         }));
+        //TODO crap can't do recursion
         env.define(self.name.lexeme.clone(), function);
         Ok(())
     }

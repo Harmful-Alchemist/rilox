@@ -2,9 +2,9 @@ use crate::environment::Environment;
 use crate::loxvalue::{Callable, LoxValue};
 use crate::stmt::Stmt;
 use crate::token::Token;
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::tokentype::TokenType;
 use std::rc::Rc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct Interpreter {
     environment: Environment,
@@ -28,23 +28,18 @@ impl Interpreter {
                 token_type: TokenType::Identifier,
                 lexeme: "clock".to_string(),
                 literal: LoxValue::None,
-                line: 0
-            }
+                line: 0,
+            },
         };
-        env.define(
-            String::from("clock"),
-            LoxValue::Callable(Box::new(callable)),
-        );
+        env.define(String::from("clock"), LoxValue::Callable(Rc::new(callable)));
         Interpreter { environment: env }
     }
 
     pub fn new_with_env(environment: Environment) -> Self {
-        Interpreter{
-            environment
-        }
+        Interpreter { environment }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Box<dyn Stmt>>) -> Result<(), (String, Token)> {
+    pub fn interpret(&mut self, statements: Vec<Rc<dyn Stmt>>) -> Result<(), (String, Token)> {
         for statement in statements {
             match statement.evaluate(&mut self.environment) {
                 Ok(_) => {}

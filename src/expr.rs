@@ -2,6 +2,7 @@ use crate::environment::Environment;
 use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
+use std::rc::Rc;
 
 pub trait Expr {
     fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)>;
@@ -21,9 +22,9 @@ pub enum Kind {
 }
 
 pub struct Binary {
-    pub(crate) left: Box<dyn Expr>,
+    pub(crate) left: Rc<dyn Expr>,
     pub(crate) operator: Token,
-    pub(crate) right: Box<dyn Expr>,
+    pub(crate) right: Rc<dyn Expr>,
 }
 
 impl Expr for Binary {
@@ -90,7 +91,7 @@ impl Expr for Binary {
 }
 
 pub struct Grouping {
-    pub(crate) expression: Box<dyn Expr>,
+    pub(crate) expression: Rc<dyn Expr>,
 }
 
 impl Expr for Grouping {
@@ -119,7 +120,7 @@ impl Expr for Literal {
 
 pub struct Unary {
     pub(crate) operator: Token,
-    pub(crate) right: Box<dyn Expr>,
+    pub(crate) right: Rc<dyn Expr>,
 }
 
 impl Expr for Unary {
@@ -173,7 +174,7 @@ impl Expr for NoOp {
 
 pub struct Assign {
     pub(crate) name: Token,
-    pub(crate) value: Box<dyn Expr>,
+    pub(crate) value: Rc<dyn Expr>,
 }
 
 impl Expr for Assign {
@@ -191,9 +192,9 @@ impl Expr for Assign {
 }
 
 pub struct Logical {
-    pub(crate) left: Box<dyn Expr>,
+    pub(crate) left: Rc<dyn Expr>,
     pub(crate) operator: Token,
-    pub(crate) right: Box<dyn Expr>,
+    pub(crate) right: Rc<dyn Expr>,
 }
 
 impl Expr for Logical {
@@ -217,9 +218,9 @@ impl Expr for Logical {
 }
 
 pub struct Call {
-    pub(crate) callee: Box<dyn Expr>,
+    pub(crate) callee: Rc<dyn Expr>,
     pub(crate) paren: Token,
-    pub(crate) arguments: Vec<Box<dyn Expr>>,
+    pub(crate) arguments: Vec<Rc<dyn Expr>>,
 }
 
 impl Expr for Call {
