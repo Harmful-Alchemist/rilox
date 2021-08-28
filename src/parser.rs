@@ -1,6 +1,8 @@
-use crate::expr::{Assign, Binary, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable};
+use crate::expr::{
+    Assign, Binary, Call, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable,
+};
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While, Function};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 
@@ -25,18 +27,21 @@ impl Parser {
         while !self.is_at_end() {
             match self.declaration() {
                 Ok(statement) => statements.push(statement),
-                Err((msg, token)) => errors.push((token.clone(), String::from(msg))),
+                Err((msg, token)) => errors.push((token.clone(), msg)),
             }
         }
         (statements, errors)
     }
 
-    fn expression(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn expression(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         self.assignment()
     }
 
-    fn declaration(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
-        if self.matching(&[TokenType::Var]) {
+    fn declaration(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
+        if self.matching(&[TokenType::Fun]) {
+            self.function("function")
+        }
+        else if self.matching(&[TokenType::Var]) {
             self.var_declaration()
         } else {
             let statement = self.statement();
@@ -50,7 +55,7 @@ impl Parser {
         }
     }
 
-    fn statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+    fn statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
         if self.matching(&[TokenType::For]) {
             return self.for_statement();
         }
@@ -72,8 +77,8 @@ impl Parser {
         self.expression_statement()
     }
 
-    fn for_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
-        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.")?;
+    fn for_statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
+        self.consume(TokenType::LeftParen, String::from("Expect '(' after 'for'."))?;
         let initializer: Option<Box<dyn Stmt>> = if self.matching(&[TokenType::SemiColon]) {
             None
         } else if self.matching(&[TokenType::Var]) {
@@ -87,7 +92,7 @@ impl Parser {
         } else {
             None
         };
-        self.consume(TokenType::SemiColon, "Expect ';' after loop condition.")?;
+        self.consume(TokenType::SemiColon, String::from("Expect ';' after loop condition."))?;
 
         let increment: Option<Box<dyn Expr>> = if !self.check(TokenType::RightParen) {
             Some(self.expression()?)
@@ -95,7 +100,7 @@ impl Parser {
             None
         };
 
-        self.consume(TokenType::RightParen, "Expect ')' after for clauses.")?;
+        self.consume(TokenType::RightParen, String::from("Expect ')' after for clauses."))?;
 
         let mut body = self.statement()?;
 
@@ -132,10 +137,10 @@ impl Parser {
         Ok(body)
     }
 
-    fn if_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
-        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
+    fn if_statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
+        self.consume(TokenType::LeftParen, String::from("Expect '(' after 'if'."))?;
         let condition = self.expression()?;
-        self.consume(TokenType::RightParen, "Expect ')' after if condition.")?;
+        self.consume(TokenType::RightParen, String::from("Expect ')' after if condition."))?;
 
         let then_branch = self.statement()?;
         let mut else_branch = None;
@@ -151,20 +156,20 @@ impl Parser {
         }))
     }
 
-    fn print_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+    fn print_statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
         let expression = self.expression()?;
-        let consumed = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        let consumed = self.consume(TokenType::SemiColon, String::from("Expect ';' after expression."));
         match consumed {
             Ok(_) => Ok(Box::new(Print { expression })),
             Err(e) => Err(e),
         }
     }
 
-    fn var_declaration(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+    fn var_declaration(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
         let name = self
-            .consume(TokenType::Identifier, "Expect variable name.")?
+            .consume(TokenType::Identifier, String::from("Expect variable name."))?
             .clone();
-        let to_return: Result<Box<dyn Stmt>, (&'static str, Token)> =
+        let to_return: Result<Box<dyn Stmt>, (String, Token)> =
             if self.matching(&[TokenType::Equal]) {
                 let initializer = self.expression()?;
                 Ok(Box::new(Var { name, initializer }))
@@ -174,39 +179,64 @@ impl Parser {
                     initializer: Box::new(NoOp {}),
                 }))
             };
-        self.consume(TokenType::SemiColon, "Expect ';' after var declaration.")?;
+        self.consume(TokenType::SemiColon, String::from("Expect ';' after var declaration."))?;
         to_return
     }
 
-    fn while_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
-        self.consume(TokenType::LeftParen, "Expect '(' after while.")?;
+    fn while_statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
+        self.consume(TokenType::LeftParen, String::from("Expect '(' after while."))?;
         let condition = self.expression()?;
-        self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
+        self.consume(TokenType::RightParen, String::from("Expect ')' after condition."))?;
         let body = self.statement()?;
         Ok(Box::new(While { condition, body }))
     }
 
-    fn expression_statement(&mut self) -> Result<Box<dyn Stmt>, (&'static str, Token)> {
+    fn expression_statement(&mut self) -> Result<Box<dyn Stmt>, (String, Token)> {
         let expression = self.expression()?;
-        let consumed = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        let consumed = self.consume(TokenType::SemiColon, String::from("Expect ';' after expression."));
         match consumed {
             Ok(_) => Ok(Box::new(Expression { expression })),
             Err(e) => Err(e),
         }
     }
 
-    fn block(&mut self) -> Result<Vec<Box<dyn Stmt>>, (&'static str, Token)> {
+    fn function(&mut self, kind: &'static str) -> Result<Box<dyn Stmt>, (String, Token)> {
+        let name = self.consume(TokenType::Identifier, format!("Expect {} name.", kind))?.clone();
+        self.consume(TokenType::LeftParen, format!("Expect '(' after {} name.", kind))?;
+        let mut parameters: Vec<Token> = Vec::new();
+        if !self.check(TokenType::RightParen) {
+            parameters.push(self.consume(TokenType::Identifier, String::from("Expect parameter name."))?.clone());
+            while self.matching(&[TokenType::Comma]) {
+                if parameters.len() >= 255{
+                    return Err((String::from("Can't have more than 255 parameters."), self.peek().clone()));
+                }
+                parameters.push(self.consume(TokenType::Identifier, String::from("Expect parameter name."))?.clone());
+            }
+        }
+        self.consume(TokenType::RightParen, String::from("Expect ')' after parameters."))?;
+        self.consume(TokenType::LeftBrace, format!("Expect '{{' before {} body.", kind))?;
+        let body = self.block()?;
+        Ok(Box::new(
+            Function{
+                name,
+                params: parameters.clone(),
+                body
+            }
+        ))
+    }
+
+    fn block(&mut self) -> Result<Vec<Box<dyn Stmt>>, (String, Token)> {
         let mut statements: Vec<Box<dyn Stmt>> = Vec::new();
 
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
             statements.push(self.declaration()?)
         }
 
-        self.consume(TokenType::RightBrace, "Expect '}' after block.")?;
+        self.consume(TokenType::RightBrace, String::from("Expect '}' after block."))?;
         Ok(statements)
     }
 
-    fn assignment(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn assignment(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let expr = self.or()?;
         if self.matching(&[TokenType::Equal]) {
             let equals = self.previous().clone();
@@ -215,9 +245,9 @@ impl Parser {
             match expr.kind() {
                 Kind::Variable(name) => Ok(Box::new(Assign { name, value })),
                 _ => {
-                    const MSG: &str = "Invalid assignment target.";
+                    let msg: String = String::from("Invalid assignment target.");
                     // self.error(&equals, MSG);
-                    Err((MSG, equals))
+                    Err((msg, equals))
                 }
             }
         } else {
@@ -225,7 +255,7 @@ impl Parser {
         }
     }
 
-    fn or(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn or(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.and()?;
 
         while self.matching(&[TokenType::Or]) {
@@ -240,7 +270,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn and(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn and(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.equality()?;
         while self.matching(&[TokenType::And]) {
             let operator = self.previous().clone();
@@ -254,7 +284,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn equality(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.comparison()?;
         let mut matching = self.matching(&[TokenType::BangEqual, TokenType::EqualEqual]);
         while matching {
@@ -270,7 +300,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn comparison(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.term()?;
         let types = &[
             TokenType::Greater,
@@ -292,7 +322,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn term(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.factor()?;
         let types = &[TokenType::Minus, TokenType::Plus];
         let mut matching = self.matching(types);
@@ -309,7 +339,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn factor(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let mut expr = self.unary()?;
         let types = &[TokenType::Slash, TokenType::Star];
         let mut matching = self.matching(types);
@@ -326,7 +356,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn unary(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         let types = &[TokenType::Minus, TokenType::Bang];
         let matching = self.matching(types);
         if matching {
@@ -335,10 +365,48 @@ impl Parser {
             let expr = Box::new(Unary { operator, right });
             return Ok(expr);
         }
-        self.primary()
+        self.call()
     }
 
-    fn primary(&mut self) -> Result<Box<dyn Expr>, (&'static str, Token)> {
+    fn finish_call(
+        &mut self,
+        callee: Box<dyn Expr>,
+    ) -> Result<Box<dyn Expr>, (String, Token)> {
+        let mut arguments: Vec<Box<dyn Expr>> = Vec::new();
+        if !self.check(TokenType::RightParen) {
+            arguments.push(self.expression()?);
+            while self.matching(&[TokenType::Comma]) {
+                if arguments.len() >= 255 {
+                    return Err((String::from("Can't have more than 255 arguments"), self.peek().clone()));
+                }
+                arguments.push(self.expression()?);
+            }
+        }
+
+        let paren = self
+            .consume(TokenType::RightParen, String::from("Expect ')' after arguments."))?
+            .clone();
+        Ok(Box::new(Call {
+            callee,
+            paren,
+            arguments,
+        }))
+    }
+
+    fn call(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
+        let mut expr = self.primary()?;
+        loop {
+            if self.matching(&[TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn primary(&mut self) -> Result<Box<dyn Expr>, (String, Token)> {
         if self.matching(&[TokenType::False]) {
             return Ok(Box::new(Literal {
                 value: LoxValue::Bool(false),
@@ -371,7 +439,7 @@ impl Parser {
 
         if self.matching(&[TokenType::LeftParen]) {
             let expression = self.expression()?;
-            self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
+            self.consume(TokenType::RightParen, String::from("Expect ')' after expression."))?;
             return Ok(Box::new(Grouping { expression }));
         }
 
@@ -391,8 +459,8 @@ impl Parser {
     fn consume(
         &mut self,
         ttype: TokenType,
-        msg: &'static str,
-    ) -> Result<&Token, (&'static str, Token)> {
+        msg: String,
+    ) -> Result<&Token, (String, Token)> {
         if self.check(ttype) {
             Ok(self.advance())
         } else {
@@ -417,6 +485,7 @@ impl Parser {
     }
 
     fn peek(&self) -> &Token {
+        //TODO out of bounds
         &self.tokens[self.current]
     }
 

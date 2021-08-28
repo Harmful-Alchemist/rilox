@@ -1,8 +1,11 @@
 use crate::environment::Environment;
 use crate::expr::{is_truthy, Expr};
-use crate::loxvalue::LoxValue;
+use crate::loxvalue::{LoxValue, Callable};
 use crate::token::Token;
 use crate::tokentype::TokenType;
+use crate::interpreter::Interpreter;
+use std::rc::Rc;
+
 
 pub trait Stmt {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)>;
@@ -100,6 +103,37 @@ impl Stmt for While {
         while is_truthy(self.condition.evaluate(env)?, false)? == LoxValue::Bool(true) {
             self.body.evaluate(env)?;
         }
+        Ok(())
+    }
+}
+
+pub struct Function {
+   pub(crate) name: Token,
+   pub(crate) params: Vec<Token>,
+   pub(crate) body:Vec<Rc<dyn Stmt>>
+}
+
+impl Stmt for Function{
+    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+        let function = LoxValue::Callable(Box::new(Callable{
+            arity: self.params.len(),
+            call: Rc::new(|arguments| {
+                let mut scoped_env = env.clone();
+
+                for (i, parameter) in self.params.clone().iter().enumerate() {
+                    scoped_env.define(parameter.lexeme.clone(), arguments.get(i).expect("Checked").clone());
+                }
+                let mut interpreter = Interpreter::new_with_env(scoped_env.clone());
+                //TODO cannot clone this! Can impl clone manually for all expr and stmt I guess.... Also is move necess? Might help when
+                // cloning the loxvalue cause need a solution there. Or Rc statements?
+                interpreter.interpret(self.body.clone());
+                LoxValue::None
+
+            }),
+            string: format!("<fn {}>", self.name.lexeme),
+            name: self.name.clone()
+        }));
+        env.define(self.name.lexeme.clone(), function);
         Ok(())
     }
 }

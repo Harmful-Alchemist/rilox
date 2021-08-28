@@ -17,6 +17,7 @@ pub enum Kind {
     NoOp,
     Assign,
     Logical,
+    Call,
 }
 
 pub struct Binary {
@@ -212,6 +213,47 @@ impl Expr for Logical {
 
     fn kind(&self) -> Kind {
         Kind::Logical
+    }
+}
+
+pub struct Call {
+    pub(crate) callee: Box<dyn Expr>,
+    pub(crate) paren: Token,
+    pub(crate) arguments: Vec<Box<dyn Expr>>,
+}
+
+impl Expr for Call {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+        let function = self.callee.evaluate(env)?;
+        let mut arguments: Vec<LoxValue> = Vec::new();
+        for argument in &self.arguments {
+            arguments.push(argument.evaluate(env)?);
+        }
+        match function {
+            LoxValue::Callable(callable) => {
+                if callable.arity != arguments.len() {
+                    Err((
+                        format!(
+                            "Expected {} arguments but got {}.",
+                            callable.arity,
+                            arguments.len()
+                        ),
+                        &self.paren,
+                    ))
+                } else {
+                    Ok((callable.call)(arguments))
+                }
+            }
+
+            _ => Err((
+                String::from("Can only call functions and classes."),
+                &self.paren,
+            )),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Call
     }
 }
 
