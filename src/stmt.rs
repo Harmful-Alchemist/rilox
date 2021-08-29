@@ -114,28 +114,27 @@ pub struct Function {
 
 impl Stmt for Function {
     fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
-        let env_clone = env.clone();
+        let env_clone = Box::new(env.clone());
         let cloned_body = self.body.clone();
         let cloned_params = self.params.clone();
         let function = LoxValue::Callable(Rc::new(Callable {
             arity: self.params.len(),
-            call: Rc::new(move |arguments| {
-                let mut clone_clone_env = env_clone.clone();
-                let mut scoped_env = Environment::new_child(&mut clone_clone_env);
+            function: Rc::new(move |arguments, mut environment| {
                 for (i, parameter) in cloned_params.iter().enumerate() {
-                    scoped_env.define(
+                    environment.define(
                         parameter.lexeme.clone(),
                         arguments.get(i).expect("Checked").clone(),
                     );
                 }
-                let mut interpreter = Interpreter::new_with_env(scoped_env.clone());
+                let mut interpreter = Interpreter::new_with_env(environment.clone());
+                //TODO errors and result
                 interpreter.interpret(cloned_body.clone());
                 LoxValue::None
             }),
             string: format!("<fn {}>", self.name.lexeme),
             name: self.name.clone(),
+            environment: env_clone,
         }));
-        //TODO crap can't do recursion
         env.define(self.name.lexeme.clone(), function);
         Ok(())
     }

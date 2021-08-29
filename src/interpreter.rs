@@ -15,7 +15,7 @@ impl Interpreter {
         let mut env = Environment::new();
         let callable = Callable {
             arity: 0,
-            call: Rc::new(|_arguments| {
+            function: Rc::new(|_arguments, _env| {
                 LoxValue::Number(
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
@@ -30,6 +30,7 @@ impl Interpreter {
                 literal: LoxValue::None,
                 line: 0,
             },
+            environment: Box::new(Environment::new()),
         };
         env.define(String::from("clock"), LoxValue::Callable(Rc::new(callable)));
         Interpreter { environment: env }

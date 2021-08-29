@@ -242,7 +242,7 @@ impl Expr for Call {
                         &self.paren,
                     ))
                 } else {
-                    Ok((callable.call)(arguments))
+                    Ok(callable.call(arguments))
                 }
             }
 

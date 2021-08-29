@@ -1,3 +1,4 @@
+use crate::environment::Environment;
 use crate::token::Token;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -14,9 +15,10 @@ pub enum LoxValue {
 
 pub struct Callable {
     pub(crate) arity: usize,
-    pub(crate) call: Rc<dyn Fn(Vec<LoxValue>) -> LoxValue>,
+    pub(crate) function: Rc<dyn Fn(Vec<LoxValue>, Environment) -> LoxValue>,
     pub(crate) string: String,
     pub(crate) name: Token,
+    pub(crate) environment: Box<Environment>,
 }
 
 impl Debug for Callable {
@@ -29,16 +31,28 @@ impl Debug for Callable {
     }
 }
 
-// impl Clone for Callable {
-//     fn clone(&self) -> Self {
-//         Callable {
-//             arity: self.arity,
-//             call: self.call.clone(),
-//             string: self.string.clone(),
-//             name: self.name.clone(),
-//         }
-//     }
-// }
+impl Clone for Callable {
+    fn clone(&self) -> Callable {
+        Callable {
+            arity: self.arity,
+            function: Rc::clone(&self.function),
+            string: self.string.clone(),
+            name: self.name.clone(),
+            environment: Box::new(*self.environment.clone()),
+        }
+    }
+}
+
+impl Callable {
+    pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> LoxValue {
+        let mut call_env = self.environment.clone();
+        call_env.define(
+            self.name.lexeme.clone(),
+            LoxValue::Callable(Rc::new(self.clone())),
+        );
+        (self.function)(arguments, *call_env)
+    }
+}
 
 impl PartialEq for LoxValue {
     fn eq(&self, other: &Self) -> bool {
