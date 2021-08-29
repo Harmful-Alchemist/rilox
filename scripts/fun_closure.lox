@@ -10,3 +10,14 @@ return count;
 var counter = makeCounter();
 counter();
 counter();
+print "counter done";
+var a = "global";
+{
+    fun showA() {
+        print a;
+    }
+
+    showA();
+    var a = "block";
+    showA();
+}
