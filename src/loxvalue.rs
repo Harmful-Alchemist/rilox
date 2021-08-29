@@ -11,11 +11,13 @@ pub enum LoxValue {
     Bool(bool),
     None,
     Callable(Rc<Callable>),
+    Return(Box<LoxValue>),
 }
 
 pub struct Callable {
     pub(crate) arity: usize,
-    pub(crate) function: Rc<dyn Fn(Vec<LoxValue>, Environment) -> LoxValue>,
+    pub(crate) function:
+        Rc<dyn Fn(Vec<LoxValue>, Environment) -> Result<LoxValue, (String, Token)>>,
     pub(crate) string: String,
     pub(crate) name: Token,
     pub(crate) environment: Box<Environment>,
@@ -44,7 +46,7 @@ impl Clone for Callable {
 }
 
 impl Callable {
-    pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> LoxValue {
+    pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
         let mut call_env = self.environment.clone();
         call_env.define(
             self.name.lexeme.clone(),
@@ -78,6 +80,7 @@ impl fmt::Display for LoxValue {
             LoxValue::Bool(a) => write!(f, "{}", a),
             LoxValue::None => write!(f, "nil"),
             LoxValue::Callable(a) => write!(f, "{}", a.string),
+            LoxValue::Return(a) => write!(f, "<return {}>", a),
         }
     }
 }

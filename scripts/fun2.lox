@@ -1,0 +1,7 @@
+fun add(a,b) {
+    print a+ b;
+}
+
+add(1,1);
+print add;
+print clock;

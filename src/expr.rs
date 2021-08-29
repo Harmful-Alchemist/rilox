@@ -5,7 +5,7 @@ use crate::tokentype::TokenType;
 use std::rc::Rc;
 
 pub trait Expr {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)>;
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)>;
     fn kind(&self) -> Kind;
 }
 
@@ -28,10 +28,10 @@ pub struct Binary {
 }
 
 impl Expr for Binary {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let left = self.left.evaluate(env)?;
         let right = self.right.evaluate(env)?;
-        let token = &self.operator;
+        let token = self.operator.clone();
         match self.operator.token_type {
             TokenType::BangEqual => Ok(is_equal(left, right, true)),
             TokenType::EqualEqual => Ok(is_equal(left, right, false)),
@@ -95,7 +95,7 @@ pub struct Grouping {
 }
 
 impl Expr for Grouping {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         self.expression.evaluate(env)
     }
 
@@ -109,7 +109,7 @@ pub struct Literal {
 }
 
 impl Expr for Literal {
-    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         Ok(self.value.clone())
     }
 
@@ -124,15 +124,21 @@ pub struct Unary {
 }
 
 impl Expr for Unary {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let right = self.right.evaluate(env)?;
         match self.operator.token_type {
             TokenType::Minus => match right {
                 LoxValue::Number(a) => Ok(LoxValue::Number(-a.clone())),
-                _ => Err((String::from("Only know numbers to minus!"), &self.operator)),
+                _ => Err((
+                    String::from("Only know numbers to minus!"),
+                    self.operator.clone(),
+                )),
             },
             TokenType::Bang => is_truthy(right, true),
-            _ => Err((String::from("Unknown unary operation"), &self.operator)),
+            _ => Err((
+                String::from("Unknown unary operation"),
+                self.operator.clone(),
+            )),
         }
     }
 
@@ -146,10 +152,10 @@ pub struct Variable {
 }
 
 impl Expr for Variable {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         match env.get(&self.name) {
             Ok(val) => Ok(val.clone()),
-            Err(e) => Err((e, &self.name)),
+            Err(e) => Err((e, self.name.clone())),
         }
     }
 
@@ -163,7 +169,7 @@ pub struct NoOp {
 }
 
 impl Expr for NoOp {
-    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         Ok(LoxValue::None)
     }
 
@@ -178,11 +184,11 @@ pub struct Assign {
 }
 
 impl Expr for Assign {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let value = self.value.evaluate(env)?;
         match env.assign(&self.name, value.clone()) {
             Ok(_) => Ok(value.clone()),
-            Err((msg, _token)) => Err((msg, &self.name)),
+            Err((msg, _token)) => Err((msg, self.name.clone())),
         }
     }
 
@@ -198,7 +204,7 @@ pub struct Logical {
 }
 
 impl Expr for Logical {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let left = self.left.evaluate(env)?;
         match self.operator.token_type {
             TokenType::Or => match is_truthy(left.clone(), false)? {
@@ -224,7 +230,7 @@ pub struct Call {
 }
 
 impl Expr for Call {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let function = self.callee.evaluate(env)?;
         let mut arguments: Vec<LoxValue> = Vec::new();
         for argument in &self.arguments {
@@ -239,16 +245,19 @@ impl Expr for Call {
                             callable.arity,
                             arguments.len()
                         ),
-                        &self.paren,
+                        self.paren.clone(),
                     ))
                 } else {
-                    Ok(callable.call(arguments))
+                    match callable.call(arguments) {
+                        Ok(a) => Ok(a),
+                        Err((msg, token)) => Err((msg, token.clone())),
+                    }
                 }
             }
 
             _ => Err((
                 String::from("Can only call functions and classes."),
-                &self.paren,
+                self.paren.clone(),
             )),
         }
     }
@@ -258,7 +267,7 @@ impl Expr for Call {
     }
 }
 
-pub fn is_truthy(val: LoxValue, invert: bool) -> Result<LoxValue, (String, &'static Token)> {
+pub fn is_truthy(val: LoxValue, invert: bool) -> Result<LoxValue, (String, Token)> {
     match val {
         LoxValue::Bool(a) => {
             if invert {

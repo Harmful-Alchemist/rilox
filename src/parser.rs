@@ -2,24 +2,20 @@ use crate::expr::{
     Assign, Binary, Call, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable,
 };
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Block, Expression, Function, If, Print, Stmt, Var, While};
+use crate::stmt::{Block, Expression, Function, If, Print, ReturnStmt, Stmt, Var, While};
 use crate::token::Token;
 use crate::tokentype::TokenType;
+use crate::tokentype::TokenType::Return;
 use std::rc::Rc;
 
 pub struct Parser {
-    // lox: &'a mut Lox,
     tokens: Vec<Token>,
     current: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser {
-            // lox,
-            tokens,
-            current: 0,
-        }
+        Parser { tokens, current: 0 }
     }
 
     pub(crate) fn parse(&mut self) -> (Vec<Rc<dyn Stmt>>, Vec<(Token, String)>) {
@@ -64,6 +60,9 @@ impl Parser {
         }
         if self.matching(&[TokenType::Print]) {
             return self.print_statement();
+        }
+        if self.matching(&[TokenType::Return]) {
+            return self.return_statement();
         }
         if self.matching(&[TokenType::While]) {
             return self.while_statement();
@@ -178,6 +177,20 @@ impl Parser {
             Ok(_) => Ok(Rc::new(Print { expression })),
             Err(e) => Err(e),
         }
+    }
+
+    fn return_statement(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
+        let keyword = self.previous().clone();
+        let value = if !self.check(TokenType::SemiColon) {
+            self.expression()?
+        } else {
+            Rc::new(NoOp {})
+        };
+        self.consume(
+            TokenType::SemiColon,
+            String::from("Expect ';' after return value."),
+        )?;
+        Ok(Rc::new(ReturnStmt { keyword, value }))
     }
 
     fn var_declaration(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {

@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::expr::{is_truthy, Expr};
+use crate::expr::{is_truthy, Expr, Kind};
 use crate::interpreter::Interpreter;
 use crate::loxvalue::{Callable, LoxValue};
 use crate::token::Token;
@@ -7,7 +7,7 @@ use crate::tokentype::TokenType;
 use std::rc::Rc;
 
 pub trait Stmt {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)>;
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)>;
 }
 
 pub struct Expression {
@@ -15,11 +15,8 @@ pub struct Expression {
 }
 
 impl Stmt for Expression {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
-        match self.expression.evaluate(env) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+        self.expression.evaluate(env)
     }
 }
 
@@ -28,11 +25,11 @@ pub struct Print {
 }
 
 impl Stmt for Print {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         match self.expression.evaluate(env) {
             Ok(value) => {
                 println!("{}", value);
-                Ok(())
+                Ok(LoxValue::None)
             }
             Err(e) => Err(e),
         }
@@ -45,10 +42,10 @@ pub struct Var {
 }
 
 impl Stmt for Var {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let val = self.initializer.evaluate(env)?;
-        env.define(self.name.lexeme.clone(), val);
-        Ok(())
+        env.define(self.name.lexeme.clone(), val.clone());
+        Ok(val.clone())
     }
 }
 
@@ -57,14 +54,18 @@ pub struct Block {
 }
 
 impl Stmt for Block {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let mut scoped_env = Environment::new_child(env);
-
         for statement in &self.statements {
-            statement.evaluate(&mut scoped_env)?;
+            match statement.evaluate(&mut scoped_env)? {
+                LoxValue::Return(a) => {
+                    return Ok(LoxValue::Return(a.clone()));
+                }
+                _ => {}
+            }
         }
         update_env(env, scoped_env);
-        Ok(())
+        Ok(LoxValue::None)
     }
 }
 
@@ -75,18 +76,12 @@ pub struct If {
 }
 
 impl Stmt for If {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         match is_truthy(self.condition.evaluate(env)?, false)? {
-            LoxValue::Bool(true) => {
-                self.then_branch.evaluate(env)?;
-                Ok(())
-            }
+            LoxValue::Bool(true) => self.then_branch.evaluate(env),
             _ => match &self.else_branch {
-                None => Ok(()),
-                Some(a) => {
-                    a.evaluate(env)?;
-                    Ok(())
-                }
+                None => Ok(LoxValue::None),
+                Some(a) => a.evaluate(env),
             },
         }
     }
@@ -98,11 +93,17 @@ pub struct While {
 }
 
 impl Stmt for While {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         while is_truthy(self.condition.evaluate(env)?, false)? == LoxValue::Bool(true) {
-            self.body.evaluate(env)?;
+            match self.body.evaluate(env)? {
+                LoxValue::Return(a) => {
+                    return Ok(LoxValue::Return(a.clone()));
+                }
+                LoxValue::None => {}
+                _ => {}
+            }
         }
-        Ok(())
+        Ok(LoxValue::None)
     }
 }
 
@@ -113,7 +114,7 @@ pub struct Function {
 }
 
 impl Stmt for Function {
-    fn evaluate(&self, env: &mut Environment) -> Result<(), (String, &Token)> {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
         let env_clone = Box::new(env.clone());
         let cloned_body = self.body.clone();
         let cloned_params = self.params.clone();
@@ -127,16 +128,28 @@ impl Stmt for Function {
                     );
                 }
                 let mut interpreter = Interpreter::new_with_env(environment.clone());
-                //TODO errors and result
-                interpreter.interpret(cloned_body.clone());
-                LoxValue::None
+                interpreter.interpret(cloned_body.clone())
             }),
             string: format!("<fn {}>", self.name.lexeme),
             name: self.name.clone(),
             environment: env_clone,
         }));
         env.define(self.name.lexeme.clone(), function);
-        Ok(())
+        Ok(LoxValue::None)
+    }
+}
+
+pub struct ReturnStmt {
+    pub(crate) keyword: Token,
+    pub(crate) value: Rc<dyn Expr>,
+}
+
+impl Stmt for ReturnStmt {
+    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+        match self.value.kind() {
+            Kind::NoOp => Ok(LoxValue::Return(Box::new(LoxValue::None))),
+            _ => Ok(LoxValue::Return(Box::new(self.value.evaluate(env)?))),
+        }
     }
 }
 

@@ -16,12 +16,12 @@ impl Interpreter {
         let callable = Callable {
             arity: 0,
             function: Rc::new(|_arguments, _env| {
-                LoxValue::Number(
+                Ok(LoxValue::Number(
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .expect("time went backwards")
                         .as_secs_f64(),
-                )
+                ))
             }),
             string: "<native fn>".to_string(),
             name: Token {
@@ -40,13 +40,19 @@ impl Interpreter {
         Interpreter { environment }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Rc<dyn Stmt>>) -> Result<(), (String, Token)> {
+    pub fn interpret(
+        &mut self,
+        statements: Vec<Rc<dyn Stmt>>,
+    ) -> Result<LoxValue, (String, Token)> {
         for statement in statements {
             match statement.evaluate(&mut self.environment) {
+                Ok(LoxValue::Return(value)) => {
+                    return Ok(*value);
+                }
                 Ok(_) => {}
                 Err((msg, token)) => return Err((String::from(msg), token.clone())),
             }
         }
-        Ok(())
+        Ok(LoxValue::None)
     }
 }
