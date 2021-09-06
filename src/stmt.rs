@@ -3,6 +3,7 @@ use crate::expr::{is_truthy, Expr, Kind};
 use crate::interpreter::Interpreter;
 use crate::loxvalue::{Callable, LoxValue};
 use crate::token::Token;
+use std::borrow::Borrow;
 use std::rc::Rc;
 
 pub trait Stmt {
@@ -63,7 +64,6 @@ impl Stmt for Block {
                 _ => {}
             }
         }
-        // update_env(env, scoped_env);
         Ok(LoxValue::None)
     }
 }
@@ -114,7 +114,8 @@ pub struct Function {
 
 impl Stmt for Function {
     fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
-        let env_clone = Rc::clone(&env);
+        let borrow: &Environment = env.borrow();
+        let env_clone = Rc::new(borrow.clone());
         let cloned_body = self.body.clone();
         let cloned_params = self.params.clone();
         let function = LoxValue::Callable(Rc::new(Callable {
@@ -131,7 +132,7 @@ impl Stmt for Function {
             }),
             string: format!("<fn {}>", self.name.lexeme),
             name: self.name.clone(),
-            environment: env_clone,
+            environment: Rc::clone(&env_clone),
         }));
         env.define(self.name.lexeme.clone(), function);
         Ok(LoxValue::None)
@@ -151,21 +152,3 @@ impl Stmt for ReturnStmt {
         }
     }
 }
-
-// fn update_env(env: &mut Environment, scoped_env: Environment) -> &mut Environment {
-//     match scoped_env.enclosing.clone() {
-//         None => env,
-//         Some(enclosing) => {
-//             for (key, val) in enclosing.values.borrow().clone() {
-//                 let fake_token = Token {
-//                     token_type: TokenType::Var,
-//                     lexeme: key,
-//                     literal: LoxValue::None,
-//                     line: 0,
-//                 };
-//                 env.assign(&fake_token, val);
-//             }
-//             update_env(env, *enclosing)
-//         }
-//     }
-// }

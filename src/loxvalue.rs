@@ -1,5 +1,6 @@
 use crate::environment::Environment;
 use crate::token::Token;
+use std::borrow::Borrow;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
@@ -20,6 +21,7 @@ pub struct Callable {
         Rc<dyn Fn(Vec<LoxValue>, Rc<Environment>) -> Result<LoxValue, (String, Token)>>,
     pub(crate) string: String,
     pub(crate) name: Token,
+    // Below environment is the closure
     pub(crate) environment: Rc<Environment>,
 }
 
@@ -35,18 +37,25 @@ impl Debug for Callable {
 
 impl Clone for Callable {
     fn clone(&self) -> Callable {
+        let borrow: &Environment = self.environment.borrow();
+        let env_clone = Rc::new(borrow.clone());
         Callable {
             arity: self.arity,
             function: Rc::clone(&self.function),
             string: self.string.clone(),
             name: self.name.clone(),
-            environment: Rc::clone(&self.environment),
+            environment: env_clone,
         }
     }
 }
 
 impl Callable {
     pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
+        // let mut call_env = self.environment.clone();
+        self.environment.define(
+            self.name.lexeme.clone(),
+            LoxValue::Callable(Rc::new(self.clone())),
+        );
         (self.function)(arguments, Rc::clone(&self.environment))
     }
 }
