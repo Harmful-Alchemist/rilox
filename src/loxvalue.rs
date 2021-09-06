@@ -67,8 +67,7 @@ impl PartialEq for LoxValue {
             (LoxValue::Number(a), LoxValue::Number(b)) => a == b,
             (LoxValue::None, LoxValue::None) => true,
             (LoxValue::Bool(a), LoxValue::Bool(b)) => a == b,
-            (LoxValue::Callable(_a), LoxValue::Callable(_b)) => false,
-            //TODO Can't compare functions I guess, maybe with the Rc?
+            (LoxValue::Callable(a), LoxValue::Callable(b)) => Rc::ptr_eq(a, b),
             _ => false,
         }
     }
