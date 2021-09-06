@@ -5,7 +5,7 @@ use crate::tokentype::TokenType;
 use std::rc::Rc;
 
 pub trait Expr {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)>;
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)>;
     fn kind(&self) -> Kind;
 }
 
@@ -28,9 +28,9 @@ pub struct Binary {
 }
 
 impl Expr for Binary {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
-        let left = self.left.evaluate(env)?;
-        let right = self.right.evaluate(env)?;
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let left = self.left.evaluate(Rc::clone(&env))?;
+        let right = self.right.evaluate(Rc::clone(&env))?;
         let token = self.operator.clone();
         match self.operator.token_type {
             TokenType::BangEqual => Ok(is_equal(left, right, true)),
@@ -95,7 +95,7 @@ pub struct Grouping {
 }
 
 impl Expr for Grouping {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         self.expression.evaluate(env)
     }
 
@@ -109,7 +109,7 @@ pub struct Literal {
 }
 
 impl Expr for Literal {
-    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+    fn evaluate(&self, _env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         Ok(self.value.clone())
     }
 
@@ -124,7 +124,7 @@ pub struct Unary {
 }
 
 impl Expr for Unary {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         let right = self.right.evaluate(env)?;
         match self.operator.token_type {
             TokenType::Minus => match right {
@@ -152,7 +152,7 @@ pub struct Variable {
 }
 
 impl Expr for Variable {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         match env.get(&self.name) {
             Ok(val) => Ok(val.clone()),
             Err(e) => Err((e, self.name.clone())),
@@ -169,7 +169,7 @@ pub struct NoOp {
 }
 
 impl Expr for NoOp {
-    fn evaluate(&self, _env: &mut Environment) -> Result<LoxValue, (String, Token)> {
+    fn evaluate(&self, _env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         Ok(LoxValue::None)
     }
 
@@ -184,8 +184,8 @@ pub struct Assign {
 }
 
 impl Expr for Assign {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
-        let value = self.value.evaluate(env)?;
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let value = self.value.evaluate(Rc::clone(&env))?;
         match env.assign(&self.name, value.clone()) {
             Ok(_) => Ok(value.clone()),
             Err((msg, _token)) => Err((msg, self.name.clone())),
@@ -204,16 +204,16 @@ pub struct Logical {
 }
 
 impl Expr for Logical {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
-        let left = self.left.evaluate(env)?;
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let left = self.left.evaluate(Rc::clone(&env))?;
         match self.operator.token_type {
             TokenType::Or => match is_truthy(left.clone(), false)? {
                 LoxValue::Bool(true) => Ok(left.clone()),
-                _ => Ok(self.right.evaluate(env)?),
+                _ => Ok(self.right.evaluate(Rc::clone(&env))?),
             },
             _ => match is_truthy(left.clone(), true)? {
                 LoxValue::Bool(true) => Ok(left.clone()),
-                _ => Ok(self.right.evaluate(env)?),
+                _ => Ok(self.right.evaluate(Rc::clone(&env))?),
             },
         }
     }
@@ -230,11 +230,11 @@ pub struct Call {
 }
 
 impl Expr for Call {
-    fn evaluate(&self, env: &mut Environment) -> Result<LoxValue, (String, Token)> {
-        let function = self.callee.evaluate(env)?;
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let function = self.callee.evaluate(Rc::clone(&env))?;
         let mut arguments: Vec<LoxValue> = Vec::new();
         for argument in &self.arguments {
-            arguments.push(argument.evaluate(env)?);
+            arguments.push(argument.evaluate(Rc::clone(&env))?);
         }
         match function {
             LoxValue::Callable(callable) => {

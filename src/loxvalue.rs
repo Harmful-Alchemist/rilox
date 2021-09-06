@@ -17,10 +17,10 @@ pub enum LoxValue {
 pub struct Callable {
     pub(crate) arity: usize,
     pub(crate) function:
-        Rc<dyn Fn(Vec<LoxValue>, Environment) -> Result<LoxValue, (String, Token)>>,
+        Rc<dyn Fn(Vec<LoxValue>, Rc<Environment>) -> Result<LoxValue, (String, Token)>>,
     pub(crate) string: String,
     pub(crate) name: Token,
-    pub(crate) environment: Box<Environment>,
+    pub(crate) environment: Rc<Environment>,
 }
 
 impl Debug for Callable {
@@ -40,19 +40,19 @@ impl Clone for Callable {
             function: Rc::clone(&self.function),
             string: self.string.clone(),
             name: self.name.clone(),
-            environment: Box::new(*self.environment.clone()),
+            environment: Rc::clone(&self.environment),
         }
     }
 }
 
 impl Callable {
     pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
-        let mut call_env = self.environment.clone();
-        call_env.define(
-            self.name.lexeme.clone(),
-            LoxValue::Callable(Rc::new(self.clone())),
-        );
-        (self.function)(arguments, *call_env)
+        // let mut call_env = self.environment.clone();
+        // call_env.define(
+        //     self.name.lexeme.clone(),
+        //     LoxValue::Callable(Rc::new(self.clone())),
+        // );
+        (self.function)(arguments, Rc::clone(&self.environment))
     }
 }
 

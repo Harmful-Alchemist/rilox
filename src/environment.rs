@@ -1,10 +1,12 @@
 use crate::loxvalue::LoxValue;
 use crate::token::Token;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub struct Environment {
-    pub(crate) enclosing: Option<Box<Environment>>,
-    pub(crate) values: HashMap<String, LoxValue>,
+    pub(crate) enclosing: Option<Rc<Environment>>,
+    pub(crate) values: RefCell<HashMap<String, LoxValue>>,
 }
 
 impl Clone for Environment {
@@ -25,44 +27,43 @@ impl Environment {
     pub fn new() -> Self {
         Environment {
             enclosing: None,
-            values: HashMap::new(),
+            values: RefCell::new(HashMap::new()),
         }
     }
 
-    pub fn new_child(env: &mut Environment) -> Self {
+    pub fn new_child(env: Rc<Environment>) -> Self {
         Environment {
-            enclosing: Some(Box::from(env.clone())),
-            values: HashMap::new(),
+            enclosing: Some(env.clone()),
+            values: RefCell::new(HashMap::new()),
         }
     }
 
-    pub(crate) fn define(&mut self, key: String, value: LoxValue) {
-        self.values.insert(key, value);
+    pub(crate) fn define(&self, key: String, value: LoxValue) {
+        self.values.borrow_mut().insert(key, value);
     }
 
-    pub(crate) fn get(&self, name: &Token) -> Result<&LoxValue, String> {
-        match self.values.get(&*name.lexeme) {
+    pub(crate) fn get(&self, name: &Token) -> Result<LoxValue, String> {
+        match self.values.borrow_mut().get(&*name.lexeme) {
             None => match &self.enclosing {
                 None => Err(format!("Undefined variable '{}'.", name.lexeme)),
                 Some(parent) => parent.get(name),
             },
-            Some(a) => Ok(a),
+            Some(a) => Ok(a.clone()),
         }
     }
 
-    pub(crate) fn assign(&mut self, name: &Token, value: LoxValue) -> Result<(), (String, Token)> {
+    pub(crate) fn assign(&self, name: &Token, value: LoxValue) -> Result<(), (String, Token)> {
         let lexeme = &*name.lexeme;
-        if self.values.contains_key(lexeme) {
-            self.values.insert(String::from(lexeme), value);
-            Ok(())
-        } else {
-            match &mut self.enclosing {
-                None => {
-                    let msg = format!("Undefined variable '{}'.", name.lexeme);
-                    Err((msg, name.clone()))
-                }
-                Some(parent) => parent.assign(name, value),
+        if self.values.borrow_mut().contains_key(lexeme) {
+            self.values.borrow_mut().insert(String::from(lexeme), value);
+            return Ok(());
+        }
+        match &self.enclosing {
+            None => {
+                let msg = format!("Undefined variable '{}'.", name.lexeme);
+                Err((msg, name.clone()))
             }
+            Some(parent) => parent.assign(name, value),
         }
     }
 }

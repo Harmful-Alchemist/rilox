@@ -7,12 +7,12 @@ use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: Rc<Environment>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut env = Environment::new();
+        let mut env = Rc::new(Environment::new());
         let callable = Callable {
             arity: 0,
             function: Rc::new(|_arguments, _env| {
@@ -30,14 +30,16 @@ impl Interpreter {
                 literal: LoxValue::None,
                 line: 0,
             },
-            environment: Box::new(Environment::new()),
+            environment: Rc::clone(&env),
         };
         env.define(String::from("clock"), LoxValue::Callable(Rc::new(callable)));
         Interpreter { environment: env }
     }
 
-    pub fn new_with_env(environment: Environment) -> Self {
-        Interpreter { environment }
+    pub fn new_with_env(environment: Rc<Environment>) -> Self {
+        Interpreter {
+            environment: Rc::clone(&environment),
+        }
     }
 
     pub fn interpret(
@@ -45,7 +47,7 @@ impl Interpreter {
         statements: Vec<Rc<dyn Stmt>>,
     ) -> Result<LoxValue, (String, Token)> {
         for statement in statements {
-            match statement.evaluate(&mut self.environment) {
+            match statement.evaluate(Rc::clone(&self.environment)) {
                 Ok(LoxValue::Return(value)) => {
                     return Ok(*value);
                 }
