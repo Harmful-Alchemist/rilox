@@ -12,7 +12,7 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut env = Rc::new(Environment::new());
+        let env = Rc::new(Environment::new());
         let callable = Callable {
             arity: 0,
             function: Rc::new(|_arguments, _env| {

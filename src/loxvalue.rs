@@ -47,11 +47,6 @@ impl Clone for Callable {
 
 impl Callable {
     pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
-        // let mut call_env = self.environment.clone();
-        // call_env.define(
-        //     self.name.lexeme.clone(),
-        //     LoxValue::Callable(Rc::new(self.clone())),
-        // );
         (self.function)(arguments, Rc::clone(&self.environment))
     }
 }

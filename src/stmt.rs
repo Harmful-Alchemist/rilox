@@ -3,7 +3,6 @@ use crate::expr::{is_truthy, Expr, Kind};
 use crate::interpreter::Interpreter;
 use crate::loxvalue::{Callable, LoxValue};
 use crate::token::Token;
-use crate::tokentype::TokenType;
 use std::rc::Rc;
 
 pub trait Stmt {

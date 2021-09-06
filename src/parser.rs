@@ -5,7 +5,6 @@ use crate::loxvalue::LoxValue;
 use crate::stmt::{Block, Expression, Function, If, Print, ReturnStmt, Stmt, Var, While};
 use crate::token::Token;
 use crate::tokentype::TokenType;
-use crate::tokentype::TokenType::Return;
 use std::rc::Rc;
 
 pub struct Parser {
