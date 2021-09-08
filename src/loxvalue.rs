@@ -1,6 +1,8 @@
 use crate::environment::Environment;
 use crate::token::Token;
 use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
@@ -13,6 +15,47 @@ pub enum LoxValue {
     None,
     Callable(Rc<Callable>),
     Return(Box<LoxValue>),
+    Class(Rc<Klass>),
+    Instance(Rc<InstanceValue>),
+}
+
+#[derive(Debug, Clone)]
+pub struct InstanceValue {
+    pub(crate) klass: Rc<Klass>,
+    pub(crate) fields: RefCell<HashMap<String, LoxValue>>,
+}
+
+impl InstanceValue {
+    pub fn get_value(&self, name: &Token) -> Result<LoxValue, (String, Token)> {
+        match self.fields.borrow_mut().get(&*name.lexeme) {
+            None => Err((
+                format!("Undefined property '{}'.", name.lexeme),
+                name.clone(),
+            )),
+            // TODO like want a mutable class property? Hmm. I think so then each Loxvalue needs to be rc, pfew
+            // extra reference in the map. Ok-ish for now to make immutable to just keep going
+            Some(value) => Ok(value.clone()),
+        }
+    }
+
+    pub fn set_value(&self, name: String, value: LoxValue) {
+        self.fields.borrow_mut().insert(name, value);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Klass {
+    pub(crate) name: String,
+    pub(crate) arity: usize,
+}
+
+impl Klass {
+    pub(crate) fn call(&self, _arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
+        Ok(LoxValue::Instance(Rc::new(InstanceValue {
+            klass: Rc::new(self.clone()),
+            fields: RefCell::new(HashMap::new()),
+        })))
+    }
 }
 
 pub struct Callable {
@@ -84,6 +127,8 @@ impl fmt::Display for LoxValue {
             LoxValue::None => write!(f, "nil"),
             LoxValue::Callable(a) => write!(f, "{}", a.string),
             LoxValue::Return(a) => write!(f, "<return {}>", a),
+            LoxValue::Class(a) => write!(f, "{}", a.name),
+            LoxValue::Instance(a) => write!(f, "{} instance", a.klass.name),
         }
     }
 }

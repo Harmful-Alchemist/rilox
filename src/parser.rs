@@ -1,8 +1,10 @@
 use crate::expr::{
-    Assign, Binary, Call, Expr, Grouping, Kind, Literal, Logical, NoOp, Unary, Variable,
+    Assign, Binary, Call, Expr, Get, Grouping, Kind, Literal, Logical, NoOp, Set, Unary, Variable,
 };
 use crate::loxvalue::LoxValue;
-use crate::stmt::{Block, Expression, Function, If, Print, ReturnStmt, Stmt, Var, While};
+use crate::stmt::{
+    Block, ClassStmt, Expression, Function, If, Print, ReturnStmt, Stmt, Var, While,
+};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use std::rc::Rc;
@@ -34,7 +36,9 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
-        if self.matching(&[TokenType::Fun]) {
+        if self.matching(&[TokenType::Class]) {
+            self.class_declaration()
+        } else if self.matching(&[TokenType::Fun]) {
             self.function("function")
         } else if self.matching(&[TokenType::Var]) {
             self.var_declaration()
@@ -48,6 +52,27 @@ impl Parser {
                 }
             }
         }
+    }
+
+    fn class_declaration(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
+        let name = self
+            .consume(TokenType::Identifier, String::from("Expect class name."))?
+            .clone();
+        self.consume(
+            TokenType::LeftBrace,
+            String::from("Expect '{' before class body"),
+        )?;
+        let mut methods: Vec<Rc<dyn Stmt>> = Vec::new();
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            methods.push(self.function("method")?);
+        }
+
+        self.consume(
+            TokenType::RightBrace,
+            String::from("Expect '}' after class body"),
+        )?;
+        Ok(Rc::new(ClassStmt { name, methods }))
     }
 
     fn statement(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
@@ -310,6 +335,11 @@ impl Parser {
 
             match expr.kind() {
                 Kind::Variable(name) => Ok(Rc::new(Assign { name, value })),
+                Kind::Get(name, object) => Ok(Rc::new(Set {
+                    object,
+                    name,
+                    value,
+                })),
                 _ => {
                     let msg: String = String::from("Invalid assignment target.");
                     // self.error(&equals, MSG);
@@ -467,6 +497,17 @@ impl Parser {
         loop {
             if self.matching(&[TokenType::LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self.matching(&[TokenType::Dot]) {
+                let name = self
+                    .consume(
+                        TokenType::Identifier,
+                        String::from("Expect property  name after '.'."),
+                    )?
+                    .clone();
+                expr = Rc::new(Get {
+                    name,
+                    object: Rc::clone(&expr),
+                })
             } else {
                 break;
             }

@@ -1,0 +1,15 @@
+class DevonshireCream {
+    serveOn() {
+        return "Scones";
+    }
+}
+
+print DevonshireCream;
+
+class Bagel {}
+var bagel = Bagel();
+print bagel;
+
+bagel.topping = "avocado";
+
+print bagel.topping;

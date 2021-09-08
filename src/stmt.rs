@@ -1,7 +1,7 @@
 use crate::environment::Environment;
 use crate::expr::{is_truthy, Expr, Kind};
 use crate::interpreter::Interpreter;
-use crate::loxvalue::{Callable, LoxValue};
+use crate::loxvalue::{Callable, Klass, LoxValue};
 use crate::token::Token;
 use std::borrow::Borrow;
 use std::rc::Rc;
@@ -150,5 +150,21 @@ impl Stmt for ReturnStmt {
             Kind::NoOp => Ok(LoxValue::Return(Box::new(LoxValue::None))),
             _ => Ok(LoxValue::Return(Box::new(self.value.evaluate(env)?))),
         }
+    }
+}
+
+pub struct ClassStmt {
+    pub(crate) name: Token,
+    pub(crate) methods: Vec<Rc<dyn Stmt>>,
+}
+
+impl Stmt for ClassStmt {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let class = LoxValue::Class(Rc::new(Klass {
+            arity: 0,
+            name: self.name.lexeme.clone(),
+        }));
+        env.define(self.name.lexeme.clone(), class);
+        Ok(LoxValue::None)
     }
 }

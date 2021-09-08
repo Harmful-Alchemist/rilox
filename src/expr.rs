@@ -19,6 +19,8 @@ pub enum Kind {
     Assign,
     Logical,
     Call,
+    Get(Token, Rc<dyn Expr>),
+    Set,
 }
 
 pub struct Binary {
@@ -254,7 +256,10 @@ impl Expr for Call {
                     }
                 }
             }
-
+            LoxValue::Class(klass) => match klass.call(arguments) {
+                Ok(a) => Ok(a),
+                Err((msg, token)) => Err((msg, token.clone())),
+            },
             _ => Err((
                 String::from("Can only call functions and classes."),
                 self.paren.clone(),
@@ -264,6 +269,56 @@ impl Expr for Call {
 
     fn kind(&self) -> Kind {
         Kind::Call
+    }
+}
+
+pub struct Get {
+    pub(crate) object: Rc<dyn Expr>,
+    pub(crate) name: Token,
+}
+
+impl Expr for Get {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let object = self.object.evaluate(env)?;
+        match object {
+            LoxValue::Instance(instance) => instance.get_value(&self.name),
+
+            _ => Err((
+                String::from("Only instances have properties."),
+                self.name.clone(),
+            )),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Get(self.name.clone(), Rc::clone(&self.object))
+    }
+}
+
+pub struct Set {
+    pub(crate) object: Rc<dyn Expr>,
+    pub(crate) name: Token,
+    pub(crate) value: Rc<dyn Expr>,
+}
+
+impl Expr for Set {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let object = self.object.evaluate(Rc::clone(&env))?;
+        match object {
+            LoxValue::Instance(a) => {
+                let value = self.value.evaluate(Rc::clone(&env))?;
+                a.set_value(self.name.lexeme.clone(), value.clone());
+                Ok(value)
+            }
+            _ => Err((
+                String::from("Only instances have fields."),
+                self.name.clone(),
+            )),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Set
     }
 }
 
