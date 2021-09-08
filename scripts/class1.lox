@@ -11,5 +11,14 @@ var bagel = Bagel();
 print bagel;
 
 bagel.topping = "avocado";
+bagel.topping = "tomato";
 
 print bagel.topping;
+
+var bagel2 = Bagel();
+bagel2.topping = "salad";
+bagel.topping = bagel2;
+print bagel.topping;
+print bagel.topping.topping;
+bagel2.topping = "not salad";
+print bagel.topping.topping;

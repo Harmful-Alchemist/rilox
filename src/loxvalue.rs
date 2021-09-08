@@ -32,8 +32,6 @@ impl InstanceValue {
                 format!("Undefined property '{}'.", name.lexeme),
                 name.clone(),
             )),
-            // TODO like want a mutable class property? Hmm. I think so then each Loxvalue needs to be rc, pfew
-            // extra reference in the map. Ok-ish for now to make immutable to just keep going
             Some(value) => Ok(value.clone()),
         }
     }
