@@ -1,0 +1,17 @@
+class Thing{
+    getCallBack() {
+        fun localFunction() {
+            print this.smth;
+        }
+        return localFunction;
+    }
+}
+
+var thing = Thing();
+thing.smth = "smth";
+var callBack = thing.getCallBack();
+callBack();
+thing.smth = "smth2";
+callBack();
+
+//print this;

@@ -23,7 +23,7 @@ impl Lox {
     }
 
     pub fn run_file(&mut self, path: &String) {
-        self.run(fs::read_to_string(path).unwrap());
+        self.run(fs::read_to_string(path).unwrap(), true);
         if self.had_error {
             std::process::exit(65);
         }
@@ -44,7 +44,7 @@ impl Lox {
             match line {
                 Ok(0) => break,
                 Ok(_) => {
-                    self.run(buffer.clone());
+                    self.run(buffer.clone(), false);
                     self.had_error = false
                 }
                 _ => break,
@@ -52,7 +52,7 @@ impl Lox {
         }
     }
 
-    fn run(&mut self, source: String) {
+    fn run(&mut self, source: String, quit_on_error: bool) {
         let mut scanner = Scanner::new(source);
         let tokens: Vec<Token> = match scanner.scan_tokens() {
             Ok(a) => a,
@@ -61,10 +61,16 @@ impl Lox {
                 Vec::new()
             }
         };
+        if quit_on_error &&(self.had_error||self.had_runtime_error) {
+            return;
+        }
         let mut parser = Parser::new(tokens);
         let (statements, errors) = parser.parse();
         for (token, msg) in errors {
             self.error_parse(&token, &*msg);
+        }
+        if  quit_on_error &&(self.had_error||self.had_runtime_error) {
+            return;
         }
         match self.interpreter.interpret(statements) {
             Ok(_) => {}
@@ -82,6 +88,7 @@ impl Lox {
     }
 
     pub fn error_parse(&mut self, token: &Token, msg: &str) {
+        self.had_error = true;
         match token.token_type {
             TokenType::EOF => self.report(token.line, String::from("at end"), String::from(msg)),
             _ => self.report(

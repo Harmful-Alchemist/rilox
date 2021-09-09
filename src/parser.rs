@@ -1,5 +1,6 @@
 use crate::expr::{
-    Assign, Binary, Call, Expr, Get, Grouping, Kind, Literal, Logical, NoOp, Set, Unary, Variable,
+    Assign, Binary, Call, Expr, Get, Grouping, Kind, Literal, Logical, NoOp, Set, This, Unary,
+    Variable,
 };
 use crate::loxvalue::LoxValue;
 use crate::stmt::{
@@ -12,11 +13,16 @@ use std::rc::Rc;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    in_a_class: bool,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, current: 0 }
+        Parser {
+            tokens,
+            current: 0,
+            in_a_class: false,
+        }
     }
 
     pub(crate) fn parse(&mut self) -> (Vec<Rc<dyn Stmt>>, Vec<(Token, String)>) {
@@ -55,6 +61,7 @@ impl Parser {
     }
 
     fn class_declaration(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
+        self.in_a_class = true;
         let name = self
             .consume(TokenType::Identifier, String::from("Expect class name."))?
             .clone();
@@ -72,6 +79,7 @@ impl Parser {
             TokenType::RightBrace,
             String::from("Expect '}' after class body"),
         )?;
+        self.in_a_class = false;
         Ok(Rc::new(ClassStmt { name, methods }))
     }
 
@@ -539,6 +547,19 @@ impl Parser {
             return Ok(Rc::new(Literal {
                 value: self.previous().literal.clone(),
             }));
+        }
+
+        if self.matching(&[TokenType::This]) {
+            return if self.in_a_class {
+                Ok(Rc::new(This {
+                    keyword: self.previous().clone(),
+                }))
+            } else {
+                return Err((
+                    String::from("Can't use 'this' outside of a class"),
+                    self.peek().clone(),
+                ));
+            };
         }
 
         if self.matching(&[TokenType::Identifier]) {

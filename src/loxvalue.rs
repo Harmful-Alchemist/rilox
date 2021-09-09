@@ -29,9 +29,14 @@ impl InstanceValue {
     pub fn get_value(&self, name: &Token) -> Result<LoxValue, (String, Token)> {
         match self.class.methods.borrow().get(&*name.lexeme) {
             None => {}
-            Some(method) => {
-                return Ok(method.clone());
-            }
+            Some(method) => match method {
+                LoxValue::Callable(callable) => {
+                    let updated_method = callable.clone();
+                    updated_method.bind(LoxValue::Instance(Rc::new(self.clone())));
+                    return Ok(LoxValue::Callable(updated_method));
+                }
+                _ => {}
+            },
         }
         match self.fields.borrow_mut().get(&*name.lexeme) {
             None => Err((
@@ -115,6 +120,10 @@ impl Callable {
             LoxValue::Callable(Rc::new(self.clone())),
         );
         (self.function)(arguments, Rc::clone(&self.environment))
+    }
+
+    pub(crate) fn bind(&self, instance: LoxValue) {
+        self.environment.define(String::from("this"), instance);
     }
 }
 

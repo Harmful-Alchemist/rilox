@@ -21,6 +21,7 @@ pub enum Kind {
     Call,
     Get(Token, Rc<dyn Expr>),
     Set,
+    This,
 }
 
 pub struct Binary {
@@ -319,6 +320,23 @@ impl Expr for Set {
 
     fn kind(&self) -> Kind {
         Kind::Set
+    }
+}
+
+pub struct This {
+    pub(crate) keyword: Token,
+}
+
+impl Expr for This {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        match env.get(&self.keyword) {
+            Ok(a) => Ok(a),
+            Err(msg) => Err((msg, self.keyword.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::This
     }
 }
 
