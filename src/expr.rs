@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::loxvalue::LoxValue;
+use crate::loxvalue::{Callable, LoxValue};
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use std::rc::Rc;
@@ -22,6 +22,7 @@ pub enum Kind {
     Get(Token, Rc<dyn Expr>),
     Set,
     This,
+    Super,
 }
 
 pub struct Binary {
@@ -337,6 +338,51 @@ impl Expr for This {
 
     fn kind(&self) -> Kind {
         Kind::This
+    }
+}
+
+pub struct Super {
+    pub(crate) keyword: Token,
+    pub(crate) method: Token,
+}
+
+impl Expr for Super {
+    fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        match env.get_by_string(String::from("super")) {
+            Ok(a) => match a {
+                LoxValue::Class(super_class) => {
+                    match super_class.find_method(self.method.lexeme.clone()) {
+                        None => Err((
+                            format!("Undefined property'{}'.", self.method.lexeme),
+                            self.keyword.clone(),
+                        )),
+                        Some(method) => {
+                            let this_instance =
+                                match env.get_by_string(String::from("this")).unwrap() {
+                                    LoxValue::Instance(me) => me,
+                                    _ => {
+                                        return Err((
+                                            String::from("Expect this here"),
+                                            self.keyword.clone(),
+                                        ));
+                                    }
+                                };
+                            method.bind(LoxValue::Instance(Rc::clone(&this_instance)));
+                            Ok(LoxValue::Callable(Rc::clone(&method)))
+                        }
+                    }
+                }
+                _ => Err((
+                    String::from("No 'super' in this environment"),
+                    self.keyword.clone(),
+                )),
+            },
+            Err(msg) => Err((msg, self.keyword.clone())),
+        }
+    }
+
+    fn kind(&self) -> Kind {
+        Kind::Super
     }
 }
 

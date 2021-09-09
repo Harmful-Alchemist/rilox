@@ -1,6 +1,6 @@
 use crate::expr::{
-    Assign, Binary, Call, Expr, Get, Grouping, Kind, Literal, Logical, NoOp, Set, This, Unary,
-    Variable,
+    Assign, Binary, Call, Expr, Get, Grouping, Kind, Literal, Logical, NoOp, Set, Super, This,
+    Unary, Variable,
 };
 use crate::loxvalue::LoxValue;
 use crate::stmt::{
@@ -578,6 +578,19 @@ impl Parser {
             return Ok(Rc::new(Literal {
                 value: self.previous().literal.clone(),
             }));
+        }
+
+        if self.matching(&[TokenType::Super]) {
+            let keyword = self.previous().clone();
+            self.consume(TokenType::Dot, String::from("Expect '.' after 'super'."))?;
+            let method = self
+                .consume(
+                    TokenType::Identifier,
+                    String::from("Expect super class method name"),
+                )?
+                .clone();
+
+            return Ok(Rc::new(Super { keyword, method }));
         }
 
         if self.matching(&[TokenType::This]) {

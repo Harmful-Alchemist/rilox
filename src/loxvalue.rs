@@ -172,6 +172,10 @@ impl Callable {
         self.environment.define(String::from("this"), instance);
     }
 
+    pub(crate) fn bind_super(&self, instance: LoxValue) {
+        self.environment.define(String::from("super"), instance);
+    }
+
     pub(crate) fn set_initializer(&self) {
         self.is_initializer.swap(&RefCell::new(true));
     }

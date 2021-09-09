@@ -255,6 +255,12 @@ impl Stmt for ClassStmt {
                             if callable.name.lexeme == "init" {
                                 callable.set_initializer();
                             }
+                            match possible_super_class {
+                                None => {}
+                                Some(ref a) => {
+                                    callable.bind_super(LoxValue::Class(Rc::clone(&a)));
+                                }
+                            }
 
                             methods.insert(
                                 function.name.lexeme.clone(),
