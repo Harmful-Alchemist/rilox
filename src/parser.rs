@@ -14,6 +14,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
     in_a_class: bool,
+    in_a_init: bool,
 }
 
 impl Parser {
@@ -22,6 +23,7 @@ impl Parser {
             tokens,
             current: 0,
             in_a_class: false,
+            in_a_init: false,
         }
     }
 
@@ -213,7 +215,14 @@ impl Parser {
 
     fn return_statement(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
         let keyword = self.previous().clone();
+
         let value = if !self.check(TokenType::SemiColon) {
+            if self.in_a_init {
+                return Err((
+                    String::from("Can't return a value from an initializer."),
+                    keyword.clone(),
+                ));
+            }
             self.expression()?
         } else {
             Rc::new(NoOp {})
@@ -276,6 +285,11 @@ impl Parser {
         let name = self
             .consume(TokenType::Identifier, format!("Expect {} name.", kind))?
             .clone();
+
+        if kind == "method" && name.lexeme == "init" {
+            self.in_a_init = true
+        }
+
         self.consume(
             TokenType::LeftParen,
             format!("Expect '(' after {} name.", kind),
@@ -314,6 +328,7 @@ impl Parser {
             format!("Expect '{{' before {} body.", kind),
         )?;
         let body = self.block()?;
+        self.in_a_init = false;
         Ok(Rc::new(Function {
             name,
             params: parameters.clone(),

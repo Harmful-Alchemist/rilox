@@ -52,6 +52,16 @@ impl Environment {
         }
     }
 
+    pub(crate) fn get_by_string(&self, name: String) -> Result<LoxValue, String> {
+        match self.values.borrow_mut().get(&*name) {
+            None => match &self.enclosing {
+                None => Err(format!("Undefined variable '{}'.", name)),
+                Some(parent) => parent.get_by_string(name),
+            },
+            Some(a) => Ok(a.clone()),
+        }
+    }
+
     pub(crate) fn assign(&self, name: &Token, value: LoxValue) -> Result<(), (String, Token)> {
         let lexeme = &*name.lexeme;
         if self.values.borrow_mut().contains_key(lexeme) {

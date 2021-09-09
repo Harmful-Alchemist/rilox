@@ -244,7 +244,7 @@ impl Expr for Call {
                 if callable.arity != arguments.len() {
                     Err((
                         format!(
-                            "Expected {} arguments but got {}.",
+                            "Expected {} argument(s) but got {}.",
                             callable.arity,
                             arguments.len()
                         ),

@@ -70,11 +70,22 @@ impl Clone for Class {
 }
 
 impl Class {
-    pub(crate) fn call(&self, _arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
-        Ok(LoxValue::Instance(Rc::new(InstanceValue {
+    pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
+        let instance = Rc::new(InstanceValue {
             class: Rc::new(self.clone()),
             fields: RefCell::new(HashMap::new()),
-        })))
+        });
+        match self.methods.borrow().get("init") {
+            Some(a) => match a {
+                LoxValue::Callable(callable) => {
+                    callable.bind(LoxValue::Instance(Rc::clone(&instance)));
+                    return callable.call(arguments);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        Ok(LoxValue::Instance(instance))
     }
 }
 
@@ -86,6 +97,7 @@ pub struct Callable {
     pub(crate) name: Token,
     // Below environment is the closure
     pub(crate) environment: Rc<Environment>,
+    pub(crate) is_initializer: RefCell<bool>,
 }
 
 impl Debug for Callable {
@@ -108,22 +120,47 @@ impl Clone for Callable {
             string: self.string.clone(),
             name: self.name.clone(),
             environment: env_clone,
+            is_initializer: RefCell::new(*self.is_initializer.borrow()),
         }
     }
 }
 
 impl Callable {
     pub(crate) fn call(&self, arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
-        // let mut call_env = self.environment.clone();
+        if self.arity != arguments.len() {
+            return Err((
+                format!(
+                    "Expected {} argument(s) but got {}.",
+                    self.arity,
+                    arguments.len()
+                ),
+                self.name.clone(),
+            ));
+        };
+
         self.environment.define(
             self.name.lexeme.clone(),
             LoxValue::Callable(Rc::new(self.clone())),
         );
-        (self.function)(arguments, Rc::clone(&self.environment))
+
+        let result = (self.function)(arguments, Rc::clone(&self.environment));
+
+        if *self.is_initializer.borrow() {
+            match self.environment.get_by_string(String::from("this")) {
+                Ok(a) => Ok(a),
+                Err(msg) => Err((msg, self.name.clone())),
+            }
+        } else {
+            result
+        }
     }
 
     pub(crate) fn bind(&self, instance: LoxValue) {
         self.environment.define(String::from("this"), instance);
+    }
+
+    pub(crate) fn set_initializer(&self) {
+        self.is_initializer.swap(&RefCell::new(true));
     }
 }
 

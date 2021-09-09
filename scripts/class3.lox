@@ -1,0 +1,22 @@
+class Foo{
+    init(){
+        //return "something else.";
+        this.thing = "thing";
+        return;
+    }
+}
+
+
+class Bar{
+    init(thing){
+        this.thing = thing;
+    }
+}
+
+
+print Foo();
+print Foo().thing;
+
+print Bar("arg_thing").thing;
+//print Bar().thing;
+print Bar("arg_thing", "hmm").thing;

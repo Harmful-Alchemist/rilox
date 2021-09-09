@@ -3,6 +3,7 @@ use crate::loxvalue::{Callable, LoxValue};
 use crate::stmt::Stmt;
 use crate::token::Token;
 use crate::tokentype::TokenType;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -31,6 +32,7 @@ impl Interpreter {
                 line: 0,
             },
             environment: Rc::clone(&env),
+            is_initializer: RefCell::new(false),
         };
         env.define(String::from("clock"), LoxValue::Callable(Rc::new(callable)));
         Interpreter { environment: env }

@@ -172,6 +172,7 @@ impl Stmt for Function {
             string: format!("<fn {}>", self.name.lexeme),
             name: self.name.clone(),
             environment: Rc::clone(&env_clone),
+            is_initializer: RefCell::new(false),
         }));
         env.define(self.name.lexeme.clone(), function.clone());
         Ok(function)
@@ -216,7 +217,21 @@ impl Stmt for ClassStmt {
             match method.kind() {
                 StmtKind::Function(function) => {
                     let thing = function.evaluate(Rc::clone(&env))?;
-                    methods.insert(function.name.lexeme.clone(), thing);
+                    match thing {
+                        LoxValue::Callable(callable) => {
+                            if callable.name.lexeme == "init" {
+                                callable.set_initializer();
+                            }
+
+                            methods.insert(
+                                function.name.lexeme.clone(),
+                                LoxValue::Callable(Rc::clone(&callable)),
+                            );
+                        }
+                        _ => {
+                            methods.insert(function.name.lexeme.clone(), thing.clone());
+                        }
+                    }
                 }
                 _ => {}
             }
