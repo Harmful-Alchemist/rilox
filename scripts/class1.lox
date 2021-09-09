@@ -22,3 +22,11 @@ print bagel.topping;
 print bagel.topping.topping;
 bagel2.topping = "not salad";
 print bagel.topping.topping;
+
+class Bacon {
+    eat() {
+        print "Crunch crunch";
+    }
+}
+
+Bacon().eat();

@@ -15,18 +15,24 @@ pub enum LoxValue {
     None,
     Callable(Rc<Callable>),
     Return(Box<LoxValue>),
-    Class(Rc<Klass>),
+    Class(Rc<Class>),
     Instance(Rc<InstanceValue>),
 }
 
 #[derive(Debug, Clone)]
 pub struct InstanceValue {
-    pub(crate) klass: Rc<Klass>,
+    pub(crate) class: Rc<Class>,
     pub(crate) fields: RefCell<HashMap<String, LoxValue>>,
 }
 
 impl InstanceValue {
     pub fn get_value(&self, name: &Token) -> Result<LoxValue, (String, Token)> {
+        match self.class.methods.borrow().get(&*name.lexeme) {
+            None => {}
+            Some(method) => {
+                return Ok(method.clone());
+            }
+        }
         match self.fields.borrow_mut().get(&*name.lexeme) {
             None => Err((
                 format!("Undefined property '{}'.", name.lexeme),
@@ -41,16 +47,27 @@ impl InstanceValue {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Klass {
+#[derive(Debug)]
+pub struct Class {
     pub(crate) name: String,
     pub(crate) arity: usize,
+    pub(crate) methods: RefCell<HashMap<String, LoxValue>>,
 }
 
-impl Klass {
+impl Clone for Class {
+    fn clone(&self) -> Self {
+        Class {
+            name: self.name.clone(),
+            arity: self.arity,
+            methods: RefCell::clone(&self.methods),
+        }
+    }
+}
+
+impl Class {
     pub(crate) fn call(&self, _arguments: Vec<LoxValue>) -> Result<LoxValue, (String, Token)> {
         Ok(LoxValue::Instance(Rc::new(InstanceValue {
-            klass: Rc::new(self.clone()),
+            class: Rc::new(self.clone()),
             fields: RefCell::new(HashMap::new()),
         })))
     }
@@ -126,7 +143,7 @@ impl fmt::Display for LoxValue {
             LoxValue::Callable(a) => write!(f, "{}", a.string),
             LoxValue::Return(a) => write!(f, "<return {}>", a),
             LoxValue::Class(a) => write!(f, "{}", a.name),
-            LoxValue::Instance(a) => write!(f, "{} instance", a.klass.name),
+            LoxValue::Instance(a) => write!(f, "{} instance", a.class.name),
         }
     }
 }

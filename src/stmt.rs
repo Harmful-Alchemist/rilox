@@ -1,13 +1,28 @@
 use crate::environment::Environment;
 use crate::expr::{is_truthy, Expr, Kind};
 use crate::interpreter::Interpreter;
-use crate::loxvalue::{Callable, Klass, LoxValue};
+use crate::loxvalue::{Callable, Class, LoxValue};
 use crate::token::Token;
 use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub trait Stmt {
     fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)>;
+    fn kind(&self) -> StmtKind;
+}
+
+pub enum StmtKind {
+    Expression,
+    Print,
+    Var,
+    Block,
+    If,
+    While,
+    Function(Function),
+    ReturnStmt,
+    ClassStmt,
 }
 
 pub struct Expression {
@@ -17,6 +32,10 @@ pub struct Expression {
 impl Stmt for Expression {
     fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
         self.expression.evaluate(env)
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::Expression
     }
 }
 
@@ -34,6 +53,10 @@ impl Stmt for Print {
             Err(e) => Err(e),
         }
     }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::Print
+    }
 }
 
 pub struct Var {
@@ -46,6 +69,10 @@ impl Stmt for Var {
         let val = self.initializer.evaluate(Rc::clone(&env))?;
         env.define(self.name.lexeme.clone(), val.clone());
         Ok(val.clone())
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::Var
     }
 }
 
@@ -66,6 +93,10 @@ impl Stmt for Block {
         }
         Ok(LoxValue::None)
     }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::Block
+    }
 }
 
 pub struct If {
@@ -83,6 +114,10 @@ impl Stmt for If {
                 Some(a) => a.evaluate(Rc::clone(&env)),
             },
         }
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::If
     }
 }
 
@@ -103,6 +138,10 @@ impl Stmt for While {
             }
         }
         Ok(LoxValue::None)
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::While
     }
 }
 
@@ -134,8 +173,16 @@ impl Stmt for Function {
             name: self.name.clone(),
             environment: Rc::clone(&env_clone),
         }));
-        env.define(self.name.lexeme.clone(), function);
-        Ok(LoxValue::None)
+        env.define(self.name.lexeme.clone(), function.clone());
+        Ok(function)
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::Function(Function {
+            name: self.name.clone(),
+            params: self.params.clone(),
+            body: self.body.clone(),
+        })
     }
 }
 
@@ -151,6 +198,10 @@ impl Stmt for ReturnStmt {
             _ => Ok(LoxValue::Return(Box::new(self.value.evaluate(env)?))),
         }
     }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::ReturnStmt
+    }
 }
 
 pub struct ClassStmt {
@@ -160,11 +211,26 @@ pub struct ClassStmt {
 
 impl Stmt for ClassStmt {
     fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
-        let class = LoxValue::Class(Rc::new(Klass {
+        let mut methods: HashMap<String, LoxValue> = HashMap::new();
+        for method in &self.methods {
+            match method.kind() {
+                StmtKind::Function(function) => {
+                    let thing = function.evaluate(Rc::clone(&env))?;
+                    methods.insert(function.name.lexeme.clone(), thing);
+                }
+                _ => {}
+            }
+        }
+        let class = LoxValue::Class(Rc::new(Class {
             arity: 0,
             name: self.name.lexeme.clone(),
+            methods: RefCell::new(methods),
         }));
         env.define(self.name.lexeme.clone(), class);
         Ok(LoxValue::None)
+    }
+
+    fn kind(&self) -> StmtKind {
+        StmtKind::ClassStmt
     }
 }
