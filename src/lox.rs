@@ -61,7 +61,7 @@ impl Lox {
                 Vec::new()
             }
         };
-        if quit_on_error &&(self.had_error||self.had_runtime_error) {
+        if quit_on_error && (self.had_error || self.had_runtime_error) {
             return;
         }
         let mut parser = Parser::new(tokens);
@@ -69,7 +69,7 @@ impl Lox {
         for (token, msg) in errors {
             self.error_parse(&token, &*msg);
         }
-        if  quit_on_error &&(self.had_error||self.had_runtime_error) {
+        if quit_on_error && (self.had_error || self.had_runtime_error) {
             return;
         }
         match self.interpreter.interpret(statements) {
