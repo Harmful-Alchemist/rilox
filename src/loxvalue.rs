@@ -27,17 +27,15 @@ pub struct InstanceValue {
 
 impl InstanceValue {
     pub fn get_value(&self, name: &Token) -> Result<LoxValue, (String, Token)> {
-        match self.class.methods.borrow().get(&*name.lexeme) {
+        match self.class.find_method(name.clone().lexeme) {
             None => {}
-            Some(method) => match method {
-                LoxValue::Callable(callable) => {
-                    let updated_method = callable.clone();
-                    updated_method.bind(LoxValue::Instance(Rc::new(self.clone())));
-                    return Ok(LoxValue::Callable(updated_method));
-                }
-                _ => {}
-            },
+            Some(callable) => {
+                let updated_method = callable.clone();
+                updated_method.bind(LoxValue::Instance(Rc::new(self.clone())));
+                return Ok(LoxValue::Callable(updated_method));
+            }
         }
+
         match self.fields.borrow_mut().get(&*name.lexeme) {
             None => Err((
                 format!("Undefined property '{}'.", name.lexeme),
@@ -57,6 +55,7 @@ pub struct Class {
     pub(crate) name: String,
     pub(crate) arity: usize,
     pub(crate) methods: RefCell<HashMap<String, LoxValue>>,
+    pub(crate) super_class: Option<Rc<Class>>,
 }
 
 impl Clone for Class {
@@ -65,6 +64,7 @@ impl Clone for Class {
             name: self.name.clone(),
             arity: self.arity,
             methods: RefCell::clone(&self.methods),
+            super_class: self.super_class.clone(),
         }
     }
 }
@@ -86,6 +86,19 @@ impl Class {
             _ => {}
         }
         Ok(LoxValue::Instance(instance))
+    }
+
+    pub(crate) fn find_method(&self, name: String) -> Option<Rc<Callable>> {
+        match self.methods.borrow().get(&*name) {
+            None => match &self.super_class {
+                None => None,
+                Some(a) => a.find_method(name),
+            },
+            Some(method) => match method {
+                LoxValue::Callable(callable) => Some(Rc::clone(callable)),
+                _ => None,
+            },
+        }
     }
 }
 

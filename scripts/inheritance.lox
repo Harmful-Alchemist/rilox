@@ -1,0 +1,24 @@
+class Doughnut {
+    cook() {
+        print "Fry until golden brown";
+    }
+}
+
+class SubDoughnut < Doughnut {
+    cook() {
+        //super.cook();
+        print "Do extra stuff.";
+    }
+}
+SubDoughnut().cook();
+
+class SubSubDoughnut < SubDoughnut {}
+SubSubDoughnut().cook();
+
+var not_class = "not class";
+
+class Subclass < not_class {}
+
+class Oops < Oops {
+
+}

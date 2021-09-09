@@ -208,10 +208,43 @@ impl Stmt for ReturnStmt {
 pub struct ClassStmt {
     pub(crate) name: Token,
     pub(crate) methods: Vec<Rc<dyn Stmt>>,
+    pub(crate) super_class: Option<Rc<dyn Expr>>,
 }
 
 impl Stmt for ClassStmt {
     fn evaluate(&self, env: Rc<Environment>) -> Result<LoxValue, (String, Token)> {
+        let mut possible_super_class = None;
+        match &self.super_class {
+            None => {}
+            Some(a) => {
+                match a.kind() {
+                    Kind::Variable(super_class) => {
+                        if super_class.lexeme == self.name.lexeme {
+                            return Err((
+                                String::from("A class can't inherit from itself."),
+                                super_class,
+                            ));
+                        }
+                    }
+                    _ => {
+                        //would be weird
+                    }
+                }
+
+                match a.evaluate(Rc::clone(&env))? {
+                    LoxValue::Class(actual_super_class) => {
+                        possible_super_class = Some(Rc::clone(&actual_super_class));
+                    }
+                    _ => {
+                        return Err((
+                            String::from("Super class must be a class."),
+                            self.name.clone(),
+                        ));
+                    }
+                }
+            }
+        }
+
         let mut methods: HashMap<String, LoxValue> = HashMap::new();
         for method in &self.methods {
             match method.kind() {
@@ -240,6 +273,7 @@ impl Stmt for ClassStmt {
             arity: 0,
             name: self.name.lexeme.clone(),
             methods: RefCell::new(methods),
+            super_class: possible_super_class,
         }));
         env.define(self.name.lexeme.clone(), class);
         Ok(LoxValue::None)

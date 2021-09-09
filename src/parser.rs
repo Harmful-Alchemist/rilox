@@ -67,6 +67,18 @@ impl Parser {
         let name = self
             .consume(TokenType::Identifier, String::from("Expect class name."))?
             .clone();
+
+        let mut super_class: Option<Rc<dyn Expr>> = None;
+        if self.matching(&[TokenType::Less]) {
+            self.consume(
+                TokenType::Identifier,
+                String::from("Expect superclass name."),
+            )?;
+            super_class = Some(Rc::new(Variable {
+                name: self.previous().clone(),
+            }));
+        }
+
         self.consume(
             TokenType::LeftBrace,
             String::from("Expect '{' before class body"),
@@ -82,7 +94,11 @@ impl Parser {
             String::from("Expect '}' after class body"),
         )?;
         self.in_a_class = false;
-        Ok(Rc::new(ClassStmt { name, methods }))
+        Ok(Rc::new(ClassStmt {
+            name,
+            methods,
+            super_class,
+        }))
     }
 
     fn statement(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
