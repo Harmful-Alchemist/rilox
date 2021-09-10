@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::loxvalue::{Callable, LoxValue};
+use crate::loxvalue::LoxValue;
 use crate::token::Token;
 use crate::tokentype::TokenType;
 use std::rc::Rc;
@@ -241,7 +241,7 @@ impl Expr for Call {
             arguments.push(argument.evaluate(Rc::clone(&env))?);
         }
         match function {
-            LoxValue::Callable(callable) => {
+            LoxValue::Function(callable) => {
                 if callable.arity != arguments.len() {
                     Err((
                         format!(
@@ -258,7 +258,7 @@ impl Expr for Call {
                     }
                 }
             }
-            LoxValue::Class(klass) => match klass.call(arguments) {
+            LoxValue::Class(class) => match class.call(arguments) {
                 Ok(a) => Ok(a),
                 Err((msg, token)) => Err((msg, token.clone())),
             },
@@ -368,7 +368,7 @@ impl Expr for Super {
                                     }
                                 };
                             method.bind(LoxValue::Instance(Rc::clone(&this_instance)));
-                            Ok(LoxValue::Callable(Rc::clone(&method)))
+                            Ok(LoxValue::Function(Rc::clone(&method)))
                         }
                     }
                 }

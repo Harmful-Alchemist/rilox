@@ -157,7 +157,7 @@ impl Stmt for Function {
         let env_clone = Rc::new(borrow.clone());
         let cloned_body = self.body.clone();
         let cloned_params = self.params.clone();
-        let function = LoxValue::Callable(Rc::new(Callable {
+        let function = LoxValue::Function(Rc::new(Callable {
             arity: self.params.len(),
             function: Rc::new(move |arguments, environment| {
                 for (i, parameter) in cloned_params.iter().enumerate() {
@@ -188,7 +188,6 @@ impl Stmt for Function {
 }
 
 pub struct ReturnStmt {
-    pub(crate) keyword: Token,
     pub(crate) value: Rc<dyn Expr>,
 }
 
@@ -251,7 +250,7 @@ impl Stmt for ClassStmt {
                 StmtKind::Function(function) => {
                     let thing = function.evaluate(Rc::clone(&env))?;
                     match thing {
-                        LoxValue::Callable(callable) => {
+                        LoxValue::Function(callable) => {
                             if callable.name.lexeme == "init" {
                                 callable.set_initializer();
                             }
@@ -264,7 +263,7 @@ impl Stmt for ClassStmt {
 
                             methods.insert(
                                 function.name.lexeme.clone(),
-                                LoxValue::Callable(Rc::clone(&callable)),
+                                LoxValue::Function(Rc::clone(&callable)),
                             );
                         }
                         _ => {

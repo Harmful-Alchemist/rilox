@@ -15,6 +15,7 @@ pub struct Parser {
     current: usize,
     in_a_class: bool,
     in_a_init: bool,
+    in_a_sub_class: bool,
 }
 
 impl Parser {
@@ -24,6 +25,7 @@ impl Parser {
             current: 0,
             in_a_class: false,
             in_a_init: false,
+            in_a_sub_class: false,
         }
     }
 
@@ -70,6 +72,7 @@ impl Parser {
 
         let mut super_class: Option<Rc<dyn Expr>> = None;
         if self.matching(&[TokenType::Less]) {
+            self.in_a_sub_class = true;
             self.consume(
                 TokenType::Identifier,
                 String::from("Expect superclass name."),
@@ -93,7 +96,10 @@ impl Parser {
             TokenType::RightBrace,
             String::from("Expect '}' after class body"),
         )?;
+
         self.in_a_class = false;
+        self.in_a_sub_class = false;
+
         Ok(Rc::new(ClassStmt {
             name,
             methods,
@@ -247,7 +253,7 @@ impl Parser {
             TokenType::SemiColon,
             String::from("Expect ';' after return value."),
         )?;
-        Ok(Rc::new(ReturnStmt { keyword, value }))
+        Ok(Rc::new(ReturnStmt { value }))
     }
 
     fn var_declaration(&mut self) -> Result<Rc<dyn Stmt>, (String, Token)> {
@@ -381,7 +387,6 @@ impl Parser {
                 })),
                 _ => {
                     let msg: String = String::from("Invalid assignment target.");
-                    // self.error(&equals, MSG);
                     Err((msg, equals))
                 }
             }
@@ -582,6 +587,18 @@ impl Parser {
 
         if self.matching(&[TokenType::Super]) {
             let keyword = self.previous().clone();
+            if !self.in_a_class {
+                return Err((
+                    String::from("Can't use 'super' outside of a class."),
+                    keyword,
+                ));
+            }
+            if !self.in_a_sub_class {
+                return Err((
+                    String::from("Can't use 'super' in a class with no super class."),
+                    keyword,
+                ));
+            }
             self.consume(TokenType::Dot, String::from("Expect '.' after 'super'."))?;
             let method = self
                 .consume(
@@ -666,11 +683,6 @@ impl Parser {
     fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
-
-    // fn error(&mut self, token: &Token, msg: &'static str) -> Result<&Token, &'static str> {
-    //     self.lox.error_parse(token, msg);
-    //     Err(msg)
-    // }
 
     fn synchronize(&mut self) {
         self.advance();

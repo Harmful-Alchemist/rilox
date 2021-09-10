@@ -13,7 +13,7 @@ pub enum LoxValue {
     Number(f64),
     Bool(bool),
     None,
-    Callable(Rc<Callable>),
+    Function(Rc<Callable>),
     Return(Box<LoxValue>),
     Class(Rc<Class>),
     Instance(Rc<InstanceValue>),
@@ -32,7 +32,7 @@ impl InstanceValue {
             Some(callable) => {
                 let updated_method = callable.clone();
                 updated_method.bind(LoxValue::Instance(Rc::new(self.clone())));
-                return Ok(LoxValue::Callable(updated_method));
+                return Ok(LoxValue::Function(updated_method));
             }
         }
 
@@ -77,7 +77,7 @@ impl Class {
         });
         match self.methods.borrow().get("init") {
             Some(a) => match a {
-                LoxValue::Callable(callable) => {
+                LoxValue::Function(callable) => {
                     callable.bind(LoxValue::Instance(Rc::clone(&instance)));
                     return callable.call(arguments);
                 }
@@ -95,7 +95,7 @@ impl Class {
                 Some(a) => a.find_method(name),
             },
             Some(method) => match method {
-                LoxValue::Callable(callable) => Some(Rc::clone(callable)),
+                LoxValue::Function(callable) => Some(Rc::clone(callable)),
                 _ => None,
             },
         }
@@ -153,7 +153,7 @@ impl Callable {
 
         self.environment.define(
             self.name.lexeme.clone(),
-            LoxValue::Callable(Rc::new(self.clone())),
+            LoxValue::Function(Rc::new(self.clone())),
         );
 
         let result = (self.function)(arguments, Rc::clone(&self.environment));
@@ -188,7 +188,7 @@ impl PartialEq for LoxValue {
             (LoxValue::Number(a), LoxValue::Number(b)) => a == b,
             (LoxValue::None, LoxValue::None) => true,
             (LoxValue::Bool(a), LoxValue::Bool(b)) => a == b,
-            (LoxValue::Callable(a), LoxValue::Callable(b)) => Rc::ptr_eq(a, b),
+            (LoxValue::Function(a), LoxValue::Function(b)) => Rc::ptr_eq(a, b),
             _ => false,
         }
     }
@@ -203,7 +203,7 @@ impl fmt::Display for LoxValue {
             LoxValue::Number(a) => write!(f, "{}", a),
             LoxValue::Bool(a) => write!(f, "{}", a),
             LoxValue::None => write!(f, "nil"),
-            LoxValue::Callable(a) => write!(f, "{}", a.string),
+            LoxValue::Function(a) => write!(f, "{}", a.string),
             LoxValue::Return(a) => write!(f, "<return {}>", a),
             LoxValue::Class(a) => write!(f, "{}", a.name),
             LoxValue::Instance(a) => write!(f, "{} instance", a.class.name),
